@@ -9,6 +9,7 @@ internal sealed class GlobalHotKeyManager : IDisposable
 {
     private const int HotKeyId = 0xC0DE;
     private const int WmHotKey = 0x0312;
+    private const uint ModNoRepeat = 0x4000;
     private readonly HwndSource _source;
 
     public event EventHandler? Pressed;
@@ -19,7 +20,7 @@ internal sealed class GlobalHotKeyManager : IDisposable
         _source = HwndSource.FromHwnd(handle)
             ?? throw new InvalidOperationException("无法获取桌宠窗口句柄。");
         _source.AddHook(WndProc);
-        if (!RegisterHotKey(handle, HotKeyId, (uint)modifiers,
+        if (!RegisterHotKey(handle, HotKeyId, (uint)modifiers | ModNoRepeat,
                 (uint)KeyInterop.VirtualKeyFromKey(key)))
             throw new InvalidOperationException("快捷键 Ctrl+Alt+Q 已被其他程序占用。");
     }

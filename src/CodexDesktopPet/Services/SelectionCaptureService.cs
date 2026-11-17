@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Input;
 using Forms = System.Windows.Forms;
 
 namespace CodexDesktopPet.Services;
@@ -8,6 +9,14 @@ internal sealed class SelectionCaptureService
 {
     public async Task<string?> CaptureAsync()
     {
+        await WaitForShortcutReleaseAsync();
+
+        // Releasing Alt after a global shortcut can leave Windows applications in
+        // menu-key-tip mode. Escape returns focus to the document without changing
+        // the current text selection in common editors and browsers.
+        Forms.SendKeys.SendWait("{ESC}");
+        await Task.Delay(60);
+
         var automationText = TryCaptureWithUiAutomation();
         if (!string.IsNullOrWhiteSpace(automationText))
             return automationText.Trim();
@@ -15,13 +24,17 @@ internal sealed class SelectionCaptureService
         System.Windows.IDataObject? previousClipboard = null;
         try
         {
-            previousClipboard = System.Windows.Clipboard.GetDataObject();
-            System.Windows.Clipboard.Clear();
+            previousClipboard = TryGetClipboardData();
+            TryClearClipboard();
             Forms.SendKeys.SendWait("^c");
-            await Task.Delay(180);
-            return System.Windows.Clipboard.ContainsText()
-                ? System.Windows.Clipboard.GetText().Trim()
-                : null;
+            for (var attempt = 0; attempt < 10; attempt++)
+            {
+                await Task.Delay(100);
+                var text = TryGetClipboardText();
+                if (!string.IsNullOrWhiteSpace(text))
+                    return text.Trim();
+            }
+            return null;
         }
         catch
         {
@@ -31,9 +44,50 @@ internal sealed class SelectionCaptureService
         {
             if (previousClipboard is not null)
             {
-                try { System.Windows.Clipboard.SetDataObject(previousClipboard, true); }
-                catch { }
+                TryRestoreClipboard(previousClipboard);
             }
+        }
+    }
+
+    private static System.Windows.IDataObject? TryGetClipboardData()
+    {
+        try { return System.Windows.Clipboard.GetDataObject(); }
+        catch { return null; }
+    }
+
+    private static void TryClearClipboard()
+    {
+        try { System.Windows.Clipboard.Clear(); }
+        catch { }
+    }
+
+    private static string? TryGetClipboardText()
+    {
+        try
+        {
+            return System.Windows.Clipboard.ContainsText()
+                ? System.Windows.Clipboard.GetText()
+                : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void TryRestoreClipboard(System.Windows.IDataObject data)
+    {
+        try { System.Windows.Clipboard.SetDataObject(data, true); }
+        catch { }
+    }
+
+    private static async Task WaitForShortcutReleaseAsync()
+    {
+        var deadline = DateTime.UtcNow.AddMilliseconds(900);
+        while (DateTime.UtcNow < deadline &&
+               (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt)) != ModifierKeys.None)
+        {
+            await Task.Delay(25);
         }
     }
 

@@ -28,6 +28,7 @@ public partial class MainWindow : Window
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        AppLog.Write($"Window loaded. Version={Environment.Version}; Settings={AppSettings.SettingsPath}");
         Left = SystemParameters.WorkArea.Right - ActualWidth - 18;
         Top = SystemParameters.WorkArea.Bottom - ActualHeight - 18;
 
@@ -40,25 +41,31 @@ public partial class MainWindow : Window
             _hotKey = new GlobalHotKeyManager(this,
                 ModifierKeys.Control | ModifierKeys.Alt, Key.Q);
             _hotKey.Pressed += HotKey_Pressed;
+            AppLog.Write("Global hotkey Ctrl+Alt+Q registered successfully.");
         }
         catch (Exception ex)
         {
+            AppLog.Write($"Hotkey registration failed: {ex}");
             ShowMessage(ex.Message, PetState.Error);
         }
     }
 
     private async void HotKey_Pressed(object? sender, EventArgs e)
     {
+        AppLog.Write($"Hotkey received. Busy={_busy}");
         if (_busy)
             return;
 
         _busy = true;
+        if (!IsVisible)
+            Show();
         AnswerPanel.Visibility = Visibility.Collapsed;
         SetPetState(PetState.Capturing);
 
         try
         {
             var selectedText = await _selectionCapture.CaptureAsync();
+            AppLog.Write($"Selection captured. Length={selectedText?.Length ?? 0}");
             if (string.IsNullOrWhiteSpace(selectedText))
             {
                 ShowMessage("没有读到选中的文字。请先选中一段文字，再按 Ctrl+Alt+Q。",
@@ -68,11 +75,14 @@ public partial class MainWindow : Window
 
             SetPetState(PetState.Thinking);
             _requestCancellation = new CancellationTokenSource();
+            AppLog.Write("Starting Codex request.");
             var answer = await _codex.AskAsync(selectedText, _requestCancellation.Token);
+            AppLog.Write($"Codex request completed. AnswerLength={answer.Length}");
             ShowMessage(answer, PetState.Ready);
         }
         catch (Exception ex)
         {
+            AppLog.Write($"Request failed: {ex}");
             ShowMessage(FriendlyError(ex), PetState.Error);
         }
         finally
@@ -205,6 +215,7 @@ public partial class MainWindow : Window
 
     private void Window_Closed(object? sender, EventArgs e)
     {
+        AppLog.Write("Application closed.");
         _requestCancellation?.Cancel();
         _hotKey?.Dispose();
         _trayIcon?.Dispose();

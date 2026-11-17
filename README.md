@@ -11,6 +11,7 @@
 - 只在按下快捷键时读取当前选区，不持续截图或监控桌面
 - 透明置顶桌宠、思考动画、回答气泡、复制按钮和系统托盘
 - Codex 进程采用只读沙箱和临时会话
+- 本地诊断日志，方便判断热键、选区或 Codex 请求卡在哪一步
 
 ## 构建与运行
 
@@ -24,6 +25,8 @@ dotnet run --project .\src\CodexDesktopPet\CodexDesktopPet.csproj
 运行后，在浏览器、编辑器或文档中选中一段文字，再按 `Ctrl + Alt + Q`。
 关闭窗口会隐藏到系统托盘；从托盘菜单选择“退出”才会结束程序。
 
+当前测试版也会显示在任务栏，便于发现窗口和诊断快捷键问题。
+
 ## 设置
 
 首次运行会生成：
@@ -34,6 +37,18 @@ dotnet run --project .\src\CodexDesktopPet\CodexDesktopPet.csproj
 
 如果程序找不到 `codex.exe`，请把 `CodexExecutable` 改为本机 Codex 可执行文件的完整路径。
 还可调整回答超时、选区长度和回答长度。
+
+诊断日志位于：
+
+```text
+%LOCALAPPDATA%\CodexDesktopPet\desktop-pet.log
+```
+
+## Codex 集成方式
+
+当前版本是独立的 Windows 桌宠程序，通过已经登录的 Codex CLI 获取回答，尚未作为
+Codex 插件安装。后续插件包装会提供 Codex 内的安装入口和启动流程；全局快捷键、桌面
+窗口与选区读取仍由 Windows 桌宠进程负责。
 
 ## 隐私说明
 

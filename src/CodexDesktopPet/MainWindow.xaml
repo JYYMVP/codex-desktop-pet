@@ -3,13 +3,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Codex 桌宠" Width="430" Height="410"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
-        Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize"
+        Topmost="True" ShowInTaskbar="True" ShowActivated="False" ResizeMode="NoResize"
         Loaded="Window_Loaded" Closing="Window_Closing" Closed="Window_Closed"
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
     <Grid>
         <Border x:Name="AnswerPanel" Margin="12,10,12,138" Padding="16,13"
                 CornerRadius="18" Background="{StaticResource PanelBrush}"
-                BorderBrush="#4568E9FF" BorderThickness="1" Visibility="Collapsed">
+                BorderBrush="#4568E9FF" BorderThickness="1" Visibility="Visible">
             <Border.Effect>
                 <DropShadowEffect Color="#00222C" BlurRadius="22" ShadowDepth="4" Opacity="0.65" />
             </Border.Effect>
@@ -28,7 +28,8 @@
                 </DockPanel>
                 <ScrollViewer Grid.Row="1" Margin="0,9,0,8" VerticalScrollBarVisibility="Auto">
                     <TextBlock x:Name="AnswerText" Foreground="#F5F8FF" FontSize="14"
-                               LineHeight="22" TextWrapping="Wrap" />
+                               LineHeight="22" TextWrapping="Wrap"
+                               Text="我已经就位。选中文字后按 Ctrl + Alt + Q，我会给出简要回答。" />
                 </ScrollViewer>
                 <StackPanel Grid.Row="2" Orientation="Horizontal">
                     <Button Content="复制回答" Click="CopyAnswer_Click" Padding="10,4"
