@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "codex-desktop-pet",
+  "version": "0.1.0",
+  "description": "Install, start, and troubleshoot the Windows Codex selection assistant and desktop pet.",
+  "author": {
+    "name": "JYYMVP",
+    "url": "https://github.com/JYYMVP"
+  },
+  "repository": "https://github.com/JYYMVP/codex-desktop-pet",
+  "license": "MIT",
+  "keywords": ["codex", "desktop-pet", "windows", "selection-assistant"],
+  "extensions": {
+    "com.openai": {
+      "hooks": "./hooks/hooks.json",
+      "onboardingSkill": "./skills/setup/SKILL.md",
+      "interface": {
+        "displayName": "Codex Desktop Pet",
+        "shortDescription": "Run a clickable Windows pet that answers questions about selected text.",
+        "longDescription": "Set up and manage a Windows desktop companion that reads text only after the user presses a global shortcut, then asks the locally signed-in Codex CLI for a concise answer.",
+        "developerName": "JYYMVP",
+        "category": "Productivity",
+        "capabilities": ["Interactive", "Read"],
+        "websiteURL": "https://github.com/JYYMVP/codex-desktop-pet",
+        "defaultPrompt": [
+          "Set up Codex Desktop Pet on this Windows computer",
+          "Diagnose why the desktop pet cannot read my selected text",
+          "Help me switch or create a pixel-art desktop pet"
+        ],
+        "brandColor": "#68E9FF"
+      }
+    }
+  }
+}

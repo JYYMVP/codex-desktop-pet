@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/scripts/start-pet.ps1\"",
+            "statusMessage": "Starting Codex Desktop Pet"
+          }
+        ]
+      }
+    ]
+  }
+}
