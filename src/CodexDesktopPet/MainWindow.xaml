@@ -4,8 +4,7 @@
         Title="Codex 桌宠" Width="430" Height="410"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="True" ShowActivated="False" ResizeMode="NoResize"
-        Loaded="Window_Loaded" Closing="Window_Closing" Closed="Window_Closed"
-        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+        Loaded="Window_Loaded" Closing="Window_Closing" Closed="Window_Closed">
     <Grid>
         <Border x:Name="AnswerPanel" Margin="12,10,12,138" Padding="16,13"
                 CornerRadius="18" Background="{StaticResource PanelBrush}"
@@ -50,7 +49,11 @@
                 </Ellipse.Effect>
             </Ellipse>
             <Grid x:Name="PetBody" Canvas.Left="69" Canvas.Top="13" Width="112" Height="112"
-                  RenderTransformOrigin="0.5,0.5">
+                  RenderTransformOrigin="0.5,0.5" Cursor="Hand"
+                  ToolTip="单击展开或收起回答；拖动可移动桌宠"
+                  MouseLeftButtonDown="PetBody_MouseLeftButtonDown"
+                  MouseLeftButtonUp="PetBody_MouseLeftButtonUp"
+                  MouseMove="PetBody_MouseMove">
                 <Grid.RenderTransform>
                     <TransformGroup>
                         <ScaleTransform x:Name="PetScale" ScaleX="1" ScaleY="1" />

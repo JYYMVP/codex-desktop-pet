@@ -19,6 +19,8 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _requestCancellation;
     private bool _allowClose;
     private bool _busy;
+    private System.Windows.Point? _petPressPosition;
+    private bool _petDragged;
 
     public MainWindow()
     {
@@ -198,10 +200,48 @@ public partial class MainWindow : Window
     private void HideAnswer_Click(object sender, RoutedEventArgs e) =>
         AnswerPanel.Visibility = Visibility.Collapsed;
 
-    private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void PetBody_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ButtonState == MouseButtonState.Pressed)
-            DragMove();
+        _petPressPosition = e.GetPosition(this);
+        _petDragged = false;
+        PetBody.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void PetBody_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (_petPressPosition is null || e.LeftButton != MouseButtonState.Pressed)
+            return;
+
+        var current = e.GetPosition(this);
+        var movedFarEnough =
+            Math.Abs(current.X - _petPressPosition.Value.X) >= SystemParameters.MinimumHorizontalDragDistance ||
+            Math.Abs(current.Y - _petPressPosition.Value.Y) >= SystemParameters.MinimumVerticalDragDistance;
+        if (!movedFarEnough)
+            return;
+
+        _petDragged = true;
+        _petPressPosition = null;
+        PetBody.ReleaseMouseCapture();
+        try { DragMove(); }
+        catch (InvalidOperationException) { }
+        e.Handled = true;
+    }
+
+    private void PetBody_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        PetBody.ReleaseMouseCapture();
+        if (_petPressPosition is not null && !_petDragged)
+        {
+            AnswerPanel.Visibility = AnswerPanel.Visibility == Visibility.Visible
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+            AppLog.Write($"Pet clicked. AnswerVisible={AnswerPanel.Visibility == Visibility.Visible}");
+        }
+
+        _petPressPosition = null;
+        _petDragged = false;
+        e.Handled = true;
     }
 
     private void Window_Closing(object? sender, CancelEventArgs e)
