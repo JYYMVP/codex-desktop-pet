@@ -11,8 +11,14 @@ internal sealed class AppSettings
     public int MaximumAnswerCharacters { get; set; } = 600;
     public int ContextTurns { get; set; } = 4;
     public string Language { get; set; } = "简体中文";
-    public string ReasoningEffort { get; set; } = "low";
+    public string ReasoningEffort { get; set; } = "none";
+    public bool UseFastMode { get; set; }
+    public string HotKey { get; set; } = HotKeyGesture.DefaultValue;
     public string PetPackPath { get; set; } = string.Empty;
+    public Dictionary<string, string> PetConversationThreadIds { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
+    public bool ScreenWatchingEnabled { get; set; }
+    public int ScreenWatchingIntervalMinutes { get; set; } = 10;
     public bool StayOnTop { get; set; } = true;
 
     public static string SettingsPath => Path.Combine(
@@ -38,8 +44,20 @@ internal sealed class AppSettings
             if (loaded.TimeoutSeconds == 120)
             {
                 loaded.TimeoutSeconds = 240;
-                loaded.Save();
             }
+            if (!HotKeyGesture.TryParse(loaded.HotKey, out var hotKey, out _))
+                loaded.HotKey = HotKeyGesture.DefaultValue;
+            else
+                loaded.HotKey = hotKey.DisplayName;
+            // `minimal` is rejected by several Codex models (including
+            // gpt-5.6-sol) after expensive transport retries. `none` is the
+            // model-supported no-reasoning fast path.
+            if (string.Equals(loaded.ReasoningEffort, "minimal", StringComparison.OrdinalIgnoreCase))
+                loaded.ReasoningEffort = "none";
+            loaded.PetConversationThreadIds ??= new(StringComparer.OrdinalIgnoreCase);
+            loaded.ScreenWatchingIntervalMinutes = Math.Clamp(
+                loaded.ScreenWatchingIntervalMinutes, 1, 240);
+            loaded.Save();
             return loaded;
         }
         catch

@@ -38,8 +38,6 @@ git clone --branch plugin --single-branch `
 Set-Location .\codex-desktop-pet-plugin
 ```
 
-仓库是私有仓库时，GitHub 可能要求使用已经登录的 Git Credential Manager 或 GitHub CLI。
-
 如果目录已经存在：
 
 ```powershell
@@ -144,9 +142,10 @@ Get-Process CodexDesktopPet | Select-Object Id, Path
 1. 在浏览器或编辑器中选中一段普通文字；
 2. 按 `Ctrl + Alt + Q`；
 3. 等待气泡显示回答；
-4. 单击桌宠收起/展开气泡；
-5. 在输入框继续追问；
-6. 点击“Codex 用量”查看套餐额度。
+4. 单击桌宠收起/展开回答卡片；
+5. 在底部 Quick Chat 输入框继续追问；
+6. 从“⋯”菜单查看 Codex 套餐额度；
+7. 打开“宠物库…”验证本地宠物管理界面。
 
 关闭窗口只会隐藏到托盘；需要从托盘菜单选择“退出”才能完全结束。
 
@@ -231,8 +230,9 @@ Test-Path "$env:LOCALAPPDATA\CodexDesktopPet\app"
 
 ### 回答很慢
 
-设置中的推理强度建议保持 `low`。桌宠子进程默认关闭 hooks 和 MCP，并使用临时会话，
-以避免插件递归启动以及无关工具初始化；网络连接和模型响应时间仍会造成波动。
+设置中的推理强度建议保持 `none`。桌宠通过独立长驻的 Codex app-server 和 HTTPS-only
+provider 复用已登录的 Codex 认证，避免插件递归启动、无关工具初始化和 WebSocket 重试。
+每只宠物拥有独立的持久对话线程；网络连接和模型响应时间仍会造成波动。
 
 ## 参考
 

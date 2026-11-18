@@ -10,7 +10,7 @@ Help the user install, start, configure, or diagnose the Windows desktop compani
 Preserve these boundaries:
 
 - The Windows process owns the transparent window, global shortcut, selection capture, and pixel rendering.
-- The plugin supplies discovery, onboarding, and a trusted session-start hook; it does not make Codex continuously observe the desktop.
+- The plugin supplies discovery, onboarding, and a trusted session-start hook. Screen watching belongs to the Windows process, is off by default, and must be enabled by the user.
 - Selected text is sent to Codex only after the user presses the configured shortcut.
 - Do not copy code or assets from OpenAI's proprietary Work Pets plugin. Independently implement any compatible exporter from documented file contracts.
 
@@ -18,4 +18,4 @@ For setup, first check Windows, the .NET 8 runtime, `codex.exe`, and the expecte
 
 For troubleshooting, inspect `%LOCALAPPDATA%\CodexDesktopPet\desktop-pet.log`, then distinguish hotkey registration, selection capture, Codex connectivity, and rendering failures. Prefer the smallest repair and retest the actual shortcut path.
 
-When the user asks about conversation memory, explain that the default is a bounded in-memory session, the user can clear it at any time, and persistent history is not enabled. Never silently enable persistent history.
+When the user asks about conversation memory, explain that each pet uses its own persistent Codex thread. “New pet conversation” switches to a new thread without deleting old Codex history. Screen comments use a separate ephemeral thread so they do not pollute the pet conversation.
