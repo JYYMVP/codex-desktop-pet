@@ -33,6 +33,10 @@ dotnet run --project .\src\CodexDesktopPet\CodexDesktopPet.csproj
 
 当前测试版也会显示在任务栏，便于发现窗口和诊断快捷键问题。
 
+如果要亲自验证 `plugin` 分支，请按照
+[`docs/plugin-installation.md`](docs/plugin-installation.md) 完成 marketplace、插件、Windows
+程序文件、手动启动、hook 验证与卸载。教程中的命令已按当前 Codex CLI 核对。
+
 ## 设置
 
 首次运行会生成：
@@ -57,7 +61,8 @@ dotnet run --project .\src\CodexDesktopPet\CodexDesktopPet.csproj
 
 `main` 是独立 Windows 桌宠程序，通过已经登录的 Codex CLI 获取回答。`plugin` 分支
 提供本地 Codex marketplace、插件清单、启动 hook 和安装引导；全局快捷键、桌面窗口与
-选区读取仍由 Windows 桌宠进程负责。
+选区读取仍由 Windows 桌宠进程负责。插件安装教程见
+[`docs/plugin-installation.md`](docs/plugin-installation.md)。
 
 ## 隐私说明
 
@@ -71,7 +76,7 @@ dotnet run --project .\src\CodexDesktopPet\CodexDesktopPet.csproj
 - 像素宠物包编辑器和更多动作
 - OCR 截图选区（明确授权后触发，不做持续监控）
 - 安装包与自动启动选项
-- 插件分支的一键安装/卸载脚本
+- 像素宠物包的可视化编辑与导出
 
 ## License
 
