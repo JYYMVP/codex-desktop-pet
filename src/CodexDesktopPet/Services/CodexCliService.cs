@@ -19,7 +19,6 @@ internal sealed class CodexCliService(AppSettings settings)
         var startInfo = new ProcessStartInfo
         {
             FileName = settings.CodexExecutable,
-            Arguments = "exec --ephemeral --sandbox read-only --skip-git-repo-check --ignore-rules --color never -",
             UseShellExecute = false,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
@@ -29,6 +28,25 @@ internal sealed class CodexCliService(AppSettings settings)
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8
         };
+
+        // Desktop questions do not need repository MCP servers or lifecycle hooks.
+        // Keeping this child invocation small also prevents the desktop-pet plugin
+        // from recursively starting another copy of itself.
+        startInfo.ArgumentList.Add("--disable");
+        startInfo.ArgumentList.Add("hooks");
+        startInfo.ArgumentList.Add("-c");
+        startInfo.ArgumentList.Add($"model_reasoning_effort=\"{NormalizeReasoningEffort(settings.ReasoningEffort)}\"");
+        startInfo.ArgumentList.Add("-c");
+        startInfo.ArgumentList.Add("mcp_servers={}");
+        startInfo.ArgumentList.Add("exec");
+        startInfo.ArgumentList.Add("--ephemeral");
+        startInfo.ArgumentList.Add("--sandbox");
+        startInfo.ArgumentList.Add("read-only");
+        startInfo.ArgumentList.Add("--skip-git-repo-check");
+        startInfo.ArgumentList.Add("--ignore-rules");
+        startInfo.ArgumentList.Add("--color");
+        startInfo.ArgumentList.Add("never");
+        startInfo.ArgumentList.Add("-");
 
         using var process = new Process { StartInfo = startInfo };
         try
@@ -73,6 +91,15 @@ internal sealed class CodexCliService(AppSettings settings)
             ? stdout[..settings.MaximumAnswerCharacters].TrimEnd() + "…"
             : stdout;
     }
+
+    private static string NormalizeReasoningEffort(string? value) =>
+        value?.ToLowerInvariant() switch
+        {
+            "minimal" => "minimal",
+            "medium" => "medium",
+            "high" => "high",
+            _ => "low"
+        };
 
     private string BuildPrompt(
         string input,
