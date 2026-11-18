@@ -8,8 +8,9 @@ The plugin currently contains:
 - a repo-local marketplace entry;
 - an onboarding and troubleshooting skill;
 - a trusted `SessionStart` hook that starts an already installed companion;
+- deterministic install and uninstall scripts for the published Windows files;
 - design contracts for pixel pets and optional conversation context.
 
-It does not yet bundle or install the Windows executable. The next milestone is a deterministic installer that publishes the application to `%LOCALAPPDATA%\CodexDesktopPet`, followed by local marketplace installation and hook trust testing in Codex desktop.
+The plugin does not bundle a runtime-specific Windows payload. Its setup flow accepts a published directory, installs it under `%LOCALAPPDATA%\CodexDesktopPet\app`, and keeps settings and logs outside that removable application directory. The next packaging milestone is attaching a signed release payload so end users do not need a local .NET build.
 
 The official OpenAI Work Pets package is not a dependency. Its installed manifest declares a proprietary license, so this branch uses an independent implementation.
