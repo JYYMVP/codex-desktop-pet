@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "codex-desktop-pet",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Install, start, and troubleshoot the Windows Codex selection assistant and desktop pet.",
   "author": {
     "name": "JYYMVP",
@@ -12,7 +12,6 @@
   "keywords": ["codex", "desktop-pet", "windows", "selection-assistant"],
   "extensions": {
     "com.openai": {
-      "hooks": "./hooks/hooks.json",
       "onboardingSkill": "./skills/setup/SKILL.md",
       "interface": {
         "displayName": "Codex Desktop Pet",
