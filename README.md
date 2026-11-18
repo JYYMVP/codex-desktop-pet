@@ -43,7 +43,8 @@ dotnet run --project .\src\CodexDesktopPet\CodexDesktopPet.csproj
 
 如果程序找不到 `codex.exe`，请把 `CodexExecutable` 改为本机 Codex 可执行文件的完整路径。
 也可以直接右键桌宠选择“设置…”，调整回答语言、超时、回答长度、上下文轮数、
-置顶状态和像素宠物包路径。宠物包格式见
+推理强度、置顶状态和像素宠物包路径。划词助手默认使用低推理强度，并为其 Codex 子进程
+关闭 hooks 和 MCP，避免桌宠插件递归启动及无关工具初始化。宠物包格式见
 [`docs/pixel-pet-format.md`](docs/pixel-pet-format.md)。
 
 诊断日志位于：

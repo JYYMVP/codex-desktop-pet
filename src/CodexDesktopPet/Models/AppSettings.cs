@@ -11,6 +11,7 @@ internal sealed class AppSettings
     public int MaximumAnswerCharacters { get; set; } = 600;
     public int ContextTurns { get; set; } = 4;
     public string Language { get; set; } = "简体中文";
+    public string ReasoningEffort { get; set; } = "low";
     public string PetPackPath { get; set; } = string.Empty;
     public bool StayOnTop { get; set; } = true;
 

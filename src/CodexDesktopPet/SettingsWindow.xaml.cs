@@ -13,6 +13,7 @@ public partial class SettingsWindow : Window
         _settings = settings;
         CodexExecutableBox.Text = settings.CodexExecutable;
         LanguageBox.Text = settings.Language;
+        ReasoningEffortBox.SelectedValue = settings.ReasoningEffort;
         ContextTurnsBox.Text = settings.ContextTurns.ToString();
         MaximumAnswerBox.Text = settings.MaximumAnswerCharacters.ToString();
         TimeoutBox.Text = settings.TimeoutSeconds.ToString();
@@ -26,7 +27,8 @@ public partial class SettingsWindow : Window
             !int.TryParse(MaximumAnswerBox.Text, out var answerLength) || answerLength is < 100 or > 6000 ||
             !int.TryParse(TimeoutBox.Text, out var timeout) || timeout is < 15 or > 600 ||
             string.IsNullOrWhiteSpace(CodexExecutableBox.Text) ||
-            string.IsNullOrWhiteSpace(LanguageBox.Text))
+            string.IsNullOrWhiteSpace(LanguageBox.Text) ||
+            ReasoningEffortBox.SelectedValue is not string reasoning)
         {
             ValidationText.Text = "请检查输入范围。";
             return;
@@ -34,6 +36,7 @@ public partial class SettingsWindow : Window
 
         _settings.CodexExecutable = CodexExecutableBox.Text.Trim();
         _settings.Language = LanguageBox.Text.Trim();
+        _settings.ReasoningEffort = reasoning;
         _settings.ContextTurns = turns;
         _settings.MaximumAnswerCharacters = answerLength;
         _settings.TimeoutSeconds = timeout;
