@@ -1,15 +1,19 @@
 <Window x:Class="CodexDesktopPet.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Codex 桌宠设置" Width="520" Height="575"
-        WindowStartupLocation="CenterScreen" ResizeMode="NoResize"
-        Background="#FF171C26" Foreground="#FFF1F6FF">
-    <Grid Margin="24">
+        Title="Codex 桌宠设置" Width="640" Height="760" MinHeight="680"
+        WindowStartupLocation="CenterScreen" ResizeMode="CanResize"
+        Background="{StaticResource WindowBrush}" Foreground="{StaticResource TextBrush}">
+    <Grid Margin="28">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="150" />
+            <ColumnDefinition Width="180" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -23,8 +27,8 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.ColumnSpan="2" Text="桌宠与回答设置" FontSize="21" FontWeight="SemiBold"
-                   Foreground="#FF68E9FF" Margin="0,0,0,20" />
+        <TextBlock Grid.ColumnSpan="2" Text="设置" FontSize="24" FontWeight="SemiBold"
+                   Foreground="{StaticResource TextBrush}" Margin="0,0,0,24" />
 
         <TextBlock Grid.Row="1" Text="Codex 可执行文件" VerticalAlignment="Center" />
         <TextBox x:Name="CodexExecutableBox" Grid.Row="1" Grid.Column="1" Margin="0,5" Padding="7" />
@@ -32,41 +36,58 @@
         <TextBlock Grid.Row="2" Text="回答语言" VerticalAlignment="Center" />
         <TextBox x:Name="LanguageBox" Grid.Row="2" Grid.Column="1" Margin="0,5" Padding="7" />
 
-        <TextBlock Grid.Row="3" Text="推理强度" VerticalAlignment="Center" />
-        <ComboBox x:Name="ReasoningEffortBox" Grid.Row="3" Grid.Column="1" Margin="0,5" Padding="5"
+        <TextBlock Grid.Row="3" Text="全局快捷键" VerticalAlignment="Center" />
+        <TextBox x:Name="HotKeyBox" Grid.Row="3" Grid.Column="1" Margin="0,5" Padding="7"
+                 IsReadOnly="True" PreviewKeyDown="HotKeyBox_PreviewKeyDown"
+                 ToolTip="先单击此处，再直接按下新的组合键" />
+
+        <TextBlock Grid.Row="4" Text="推理强度" VerticalAlignment="Center" />
+        <ComboBox x:Name="ReasoningEffortBox" Grid.Row="4" Grid.Column="1" Margin="0,5" Padding="5"
                   SelectedValuePath="Tag">
-            <ComboBoxItem Tag="minimal">极简（最快）</ComboBoxItem>
+            <ComboBoxItem Tag="none">不推理（最快）</ComboBoxItem>
             <ComboBoxItem Tag="low">低（推荐）</ComboBoxItem>
             <ComboBoxItem Tag="medium">中</ComboBoxItem>
             <ComboBoxItem Tag="high">高（较慢）</ComboBoxItem>
         </ComboBox>
 
-        <TextBlock Grid.Row="4" Text="保留上下文轮数" VerticalAlignment="Center" />
-        <TextBox x:Name="ContextTurnsBox" Grid.Row="4" Grid.Column="1" Margin="0,5" Padding="7" />
+        <CheckBox x:Name="FastModeBox" Grid.Row="5" Grid.Column="1" Margin="0,8,0,6"
+                  Content="Fast 模式（响应更快，但消耗更多套餐额度）" />
 
-        <TextBlock Grid.Row="5" Text="回答最大字符数" VerticalAlignment="Center" />
-        <TextBox x:Name="MaximumAnswerBox" Grid.Row="5" Grid.Column="1" Margin="0,5" Padding="7" />
+        <CheckBox x:Name="ScreenWatchingBox" Grid.Row="6" Grid.Column="1" Margin="0,8,0,6"
+                  Content="定时看屏幕并吐槽（会截取当前全部显示器）" />
 
-        <TextBlock Grid.Row="6" Text="回答超时（秒）" VerticalAlignment="Center" />
-        <TextBox x:Name="TimeoutBox" Grid.Row="6" Grid.Column="1" Margin="0,5" Padding="7" />
+        <TextBlock Grid.Row="7" Text="看屏幕间隔（分钟）" VerticalAlignment="Center" />
+        <TextBox x:Name="ScreenIntervalBox" Grid.Row="7" Grid.Column="1" Margin="0,5" Padding="7" />
 
-        <TextBlock Grid.Row="7" Text="像素宠物包路径" VerticalAlignment="Center" />
-        <TextBox x:Name="PetPackPathBox" Grid.Row="7" Grid.Column="1" Margin="0,5" Padding="7"
+        <TextBlock Grid.Row="8" Text="保留上下文轮数" VerticalAlignment="Center" />
+        <TextBox x:Name="ContextTurnsBox" Grid.Row="8" Grid.Column="1" Margin="0,5" Padding="7"
+                 IsEnabled="False" ToolTip="持久 Codex 对话会自行管理上下文；保留此项用于旧设置兼容" />
+
+        <TextBlock Grid.Row="9" Text="回答最大字符数" VerticalAlignment="Center" />
+        <TextBox x:Name="MaximumAnswerBox" Grid.Row="9" Grid.Column="1" Margin="0,5" Padding="7" />
+
+        <TextBlock Grid.Row="10" Text="回答超时（秒）" VerticalAlignment="Center" />
+        <TextBox x:Name="TimeoutBox" Grid.Row="10" Grid.Column="1" Margin="0,5" Padding="7" />
+
+        <TextBlock Grid.Row="11" Text="像素宠物包路径" VerticalAlignment="Center" />
+        <TextBox x:Name="PetPackPathBox" Grid.Row="11" Grid.Column="1" Margin="0,5" Padding="7"
                  ToolTip="留空使用内置 64×64 像素鱼；也可填写宠物包目录或 pet.json 路径" />
 
-        <CheckBox x:Name="StayOnTopBox" Grid.Row="8" Grid.Column="1" Margin="0,12,0,6"
+        <CheckBox x:Name="StayOnTopBox" Grid.Row="12" Grid.Column="1" Margin="0,12,0,6"
                   Content="桌宠始终置顶" />
 
-        <TextBlock Grid.Row="9" Grid.ColumnSpan="2" Margin="0,12,0,0" Foreground="#FF9AA8BA"
+        <TextBlock Grid.Row="13" Grid.ColumnSpan="2" Margin="0,18,0,0"
+                   Foreground="{StaticResource MutedTextBrush}"
                    TextWrapping="Wrap"
-                   Text="快捷键固定为 Ctrl + Alt + Q。对话上下文只保存在内存中，退出桌宠即清除；也可从右键菜单立即清空。宠物包采用最大 64×64 的透明 PNG 帧。" />
+                   Text="每只宠物使用独立、持久的 Codex 对话。定时看屏幕默认关闭；开启后仅在设定间隔截一张图，生成吐槽后立即删除本地截图。宠物包采用最大 64×64 的透明 PNG 帧。" />
 
-        <StackPanel Grid.Row="10" Grid.ColumnSpan="2" Orientation="Horizontal"
+        <StackPanel Grid.Row="14" Grid.ColumnSpan="2" Orientation="Horizontal"
                     HorizontalAlignment="Right" Margin="0,18,0,0">
-            <TextBlock x:Name="ValidationText" Foreground="#FFFF7890" VerticalAlignment="Center"
+            <TextBlock x:Name="ValidationText" Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center"
                        Margin="0,0,14,0" />
             <Button Content="取消" Width="82" Margin="0,0,8,0" Padding="8,5" Click="Cancel_Click" />
-            <Button Content="保存" Width="82" Padding="8,5" Click="Save_Click" />
+            <Button Content="保存" Width="82" Padding="8,5" Click="Save_Click"
+                    Style="{StaticResource PrimaryButtonStyle}" />
         </StackPanel>
     </Grid>
 </Window>

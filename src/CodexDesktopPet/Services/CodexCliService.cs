@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Text;
 using CodexDesktopPet.Models;
 
@@ -16,9 +17,16 @@ internal sealed class CodexCliService(AppSettings settings)
             ? input[..settings.MaximumSelectionCharacters]
             : input;
 
+        var runtimeDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "CodexDesktopPet", "runtime");
+        Directory.CreateDirectory(runtimeDirectory);
+
+        var reasoningEffort = NormalizeReasoningEffort(settings.ReasoningEffort);
         var startInfo = new ProcessStartInfo
         {
             FileName = settings.CodexExecutable,
+            WorkingDirectory = runtimeDirectory,
             UseShellExecute = false,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
@@ -34,10 +42,21 @@ internal sealed class CodexCliService(AppSettings settings)
         // from recursively starting another copy of itself.
         startInfo.ArgumentList.Add("--disable");
         startInfo.ArgumentList.Add("hooks");
+        startInfo.ArgumentList.Add("--disable");
+        startInfo.ArgumentList.Add("plugins");
+        startInfo.ArgumentList.Add("--disable");
+        startInfo.ArgumentList.Add("apps");
         startInfo.ArgumentList.Add("-c");
-        startInfo.ArgumentList.Add($"model_reasoning_effort=\"{NormalizeReasoningEffort(settings.ReasoningEffort)}\"");
+        startInfo.ArgumentList.Add($"model_reasoning_effort=\"{reasoningEffort}\"");
         startInfo.ArgumentList.Add("-c");
         startInfo.ArgumentList.Add("mcp_servers={}");
+        if (settings.UseFastMode)
+        {
+            startInfo.ArgumentList.Add("--enable");
+            startInfo.ArgumentList.Add("fast_mode");
+            startInfo.ArgumentList.Add("-c");
+            startInfo.ArgumentList.Add("service_tier=\"fast\"");
+        }
         startInfo.ArgumentList.Add("exec");
         startInfo.ArgumentList.Add("--ephemeral");
         startInfo.ArgumentList.Add("--sandbox");
@@ -49,10 +68,13 @@ internal sealed class CodexCliService(AppSettings settings)
         startInfo.ArgumentList.Add("-");
 
         using var process = new Process { StartInfo = startInfo };
+        var stopwatch = Stopwatch.StartNew();
         try
         {
             if (!process.Start())
                 throw new InvalidOperationException("Codex CLI 启动失败。");
+            AppLog.Write($"Codex child started. Pid={process.Id}; Reasoning={reasoningEffort}; " +
+                         $"FastMode={settings.UseFastMode}; Cwd={runtimeDirectory}");
         }
         catch (Exception ex)
         {
@@ -80,6 +102,7 @@ internal sealed class CodexCliService(AppSettings settings)
 
         var stdout = (await stdoutTask).Trim();
         var stderr = (await stderrTask).Trim();
+        AppLog.Write($"Codex child exited. Code={process.ExitCode}; ElapsedMs={stopwatch.ElapsedMilliseconds}");
         if (process.ExitCode != 0)
             throw new InvalidOperationException(string.IsNullOrWhiteSpace(stderr)
                 ? $"Codex CLI 退出代码：{process.ExitCode}"
@@ -95,7 +118,8 @@ internal sealed class CodexCliService(AppSettings settings)
     private static string NormalizeReasoningEffort(string? value) =>
         value?.ToLowerInvariant() switch
         {
-            "minimal" => "minimal",
+            "minimal" => "none",
+            "none" => "none",
             "medium" => "medium",
             "high" => "high",
             _ => "low"

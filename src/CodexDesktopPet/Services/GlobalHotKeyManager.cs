@@ -14,15 +14,19 @@ internal sealed class GlobalHotKeyManager : IDisposable
 
     public event EventHandler? Pressed;
 
-    public GlobalHotKeyManager(Window window, ModifierKeys modifiers, Key key)
+    public GlobalHotKeyManager(Window window, ModifierKeys modifiers, Key key,
+        string displayName)
     {
         var handle = new WindowInteropHelper(window).Handle;
         _source = HwndSource.FromHwnd(handle)
             ?? throw new InvalidOperationException("无法获取桌宠窗口句柄。");
         _source.AddHook(WndProc);
-        if (!RegisterHotKey(handle, HotKeyId, (uint)modifiers | ModNoRepeat,
+        if (RegisterHotKey(handle, HotKeyId, (uint)modifiers | ModNoRepeat,
                 (uint)KeyInterop.VirtualKeyFromKey(key)))
-            throw new InvalidOperationException("快捷键 Ctrl+Alt+Q 已被其他程序占用。");
+            return;
+
+        _source.RemoveHook(WndProc);
+        throw new InvalidOperationException($"快捷键 {displayName} 已被其他程序占用。");
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam,

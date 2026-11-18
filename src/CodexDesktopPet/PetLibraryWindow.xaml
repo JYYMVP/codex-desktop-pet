@@ -1,0 +1,57 @@
+<Window x:Class="CodexDesktopPet.PetLibraryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="宠物库" Width="720" Height="520" MinWidth="660" MinHeight="470"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResizeWithGrip"
+        Background="{StaticResource WindowBrush}" Foreground="{StaticResource TextBrush}">
+    <Grid Margin="26">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="宠物" FontSize="24" FontWeight="SemiBold" />
+
+        <ListBox x:Name="PetList" Grid.Row="1" Margin="0,18,0,16" Padding="6"
+                 SelectionChanged="PetList_SelectionChanged">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Margin="5">
+                        <TextBlock Text="{Binding DisplayName}" FontSize="15" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Description}" Margin="0,3,0,0"
+                                   Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Id, StringFormat=ID: {0}}" Margin="0,2,0,0"
+                                   Foreground="{StaticResource SubtleTextBrush}" FontSize="11" />
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Grid Grid.Row="2" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="名称与描述" VerticalAlignment="Top" Margin="0,7,14,0" />
+            <StackPanel Grid.Column="1">
+                <TextBox x:Name="NameBox" Padding="7,5" />
+                <TextBox x:Name="DescriptionBox" Margin="0,7,0,0" Padding="7,5"
+                         MinHeight="50" TextWrapping="Wrap" AcceptsReturn="True" />
+            </StackPanel>
+        </Grid>
+
+        <WrapPanel Grid.Row="3">
+            <Button Content="导入 / 领养" Click="Import_Click" Padding="12,6" Margin="0,0,7,0" />
+            <Button Content="选用" Click="Select_Click" Padding="12,6" Margin="0,0,7,0"
+                    Style="{StaticResource PrimaryButtonStyle}" />
+            <Button Content="保存资料" Click="SaveMetadata_Click" Padding="12,6" Margin="0,0,7,0" />
+            <Button Content="校验" Click="Validate_Click" Padding="12,6" Margin="0,0,7,0" />
+            <Button Content="导出分享包" Click="Export_Click" Padding="12,6" Margin="0,0,7,0" />
+            <Button Content="删除" Click="Delete_Click" Padding="12,6" Margin="0,0,7,0"
+                    Foreground="{StaticResource DangerBrush}" />
+            <Button Content="关闭" Click="Close_Click" Padding="12,6" />
+        </WrapPanel>
+    </Grid>
+</Window>

@@ -85,7 +85,8 @@ internal sealed class SelectionCaptureService
     {
         var deadline = DateTime.UtcNow.AddMilliseconds(900);
         while (DateTime.UtcNow < deadline &&
-               (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt)) != ModifierKeys.None)
+               (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt |
+                                      ModifierKeys.Shift | ModifierKeys.Windows)) != ModifierKeys.None)
         {
             await Task.Delay(25);
         }
