@@ -14,6 +14,9 @@ public partial class MainWindow : Window
     private readonly AppSettings _settings = AppSettings.Load();
     private readonly SelectionCaptureService _selectionCapture = new();
     private readonly CodexCliService _codex;
+    private readonly CodexUsageService _usage;
+    private readonly PixelPetController _petController;
+    private readonly List<ConversationTurn> _conversation = [];
     private GlobalHotKeyManager? _hotKey;
     private Forms.NotifyIcon? _trayIcon;
     private CancellationTokenSource? _requestCancellation;
@@ -26,6 +29,8 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _codex = new CodexCliService(_settings);
+        _usage = new CodexUsageService(_settings);
+        _petController = new PixelPetController(PetImage, _settings.PetPackPath);
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -33,6 +38,8 @@ public partial class MainWindow : Window
         AppLog.Write($"Window loaded. Version={Environment.Version}; Settings={AppSettings.SettingsPath}");
         Left = SystemParameters.WorkArea.Right - ActualWidth - 18;
         Top = SystemParameters.WorkArea.Bottom - ActualHeight - 18;
+        Topmost = _settings.StayOnTop;
+        UpdateContextHint();
 
         CreateTrayIcon();
         SetPetState(PetState.Idle);
@@ -75,12 +82,7 @@ public partial class MainWindow : Window
                 return;
             }
 
-            SetPetState(PetState.Thinking);
-            _requestCancellation = new CancellationTokenSource();
-            AppLog.Write("Starting Codex request.");
-            var answer = await _codex.AskAsync(selectedText, _requestCancellation.Token);
-            AppLog.Write($"Codex request completed. AnswerLength={answer.Length}");
-            ShowMessage(answer, PetState.Ready);
+            await AskAndRecordAsync(selectedText, isSelection: true);
         }
         catch (Exception ex)
         {
@@ -116,8 +118,8 @@ public partial class MainWindow : Window
         };
 
         StatusText.Text = status;
-        LeftEye.Fill = RightEye.Fill = new SolidColorBrush(color);
         GlowRing.Stroke = new SolidColorBrush(color) { Opacity = 0.65 };
+        _petController.SetState(state);
         if (state == PetState.Thinking)
             StartThinkingAnimation();
     }
@@ -156,6 +158,10 @@ public partial class MainWindow : Window
     {
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("显示桌宠", null, (_, _) => ShowFromTray());
+        menu.Items.Add("查看 Codex 套餐额度", null,
+            async (_, _) => await ShowCodexUsageAsync());
+        menu.Items.Add("清空对话上下文", null, (_, _) => ClearContext());
+        menu.Items.Add("设置…", null, (_, _) => OpenSettings());
         menu.Items.Add("退出", null, (_, _) => ExitApplication());
 
         _trayIcon = new Forms.NotifyIcon
@@ -199,6 +205,151 @@ public partial class MainWindow : Window
 
     private void HideAnswer_Click(object sender, RoutedEventArgs e) =>
         AnswerPanel.Visibility = Visibility.Collapsed;
+
+    private async void ShowUsage_Click(object sender, RoutedEventArgs e) =>
+        await ShowCodexUsageAsync();
+
+    private async Task ShowCodexUsageAsync()
+    {
+        if (_busy)
+            return;
+
+        _busy = true;
+        AnswerPanel.Visibility = Visibility.Visible;
+        AnswerText.Text = "正在查询 Codex 套餐额度…";
+        SetPetState(PetState.Thinking);
+        AppLog.Write("Starting Codex plan usage query.");
+
+        try
+        {
+            _requestCancellation = new CancellationTokenSource();
+            var summary = await _usage.GetPlanSummaryAsync(_requestCancellation.Token);
+            AppLog.Write("Codex plan usage query completed.");
+            ShowMessage(summary, PetState.Ready);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write($"Codex plan usage query failed: {ex}");
+            ShowMessage(FriendlyError(ex), PetState.Error);
+        }
+        finally
+        {
+            _requestCancellation?.Dispose();
+            _requestCancellation = null;
+            _busy = false;
+        }
+    }
+
+    private void ToggleAnswer_Click(object sender, RoutedEventArgs e) =>
+        AnswerPanel.Visibility = AnswerPanel.Visibility == Visibility.Visible
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+
+    private void ExitMenu_Click(object sender, RoutedEventArgs e) => ExitApplication();
+
+    private async void AskDirect_Click(object sender, RoutedEventArgs e) =>
+        await AskDirectAsync();
+
+    private async void DirectQuestion_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+            return;
+        e.Handled = true;
+        await AskDirectAsync();
+    }
+
+    private async Task AskDirectAsync()
+    {
+        var question = DirectQuestionBox.Text.Trim();
+        if (_busy || string.IsNullOrWhiteSpace(question))
+            return;
+
+        _busy = true;
+        AnswerPanel.Visibility = Visibility.Visible;
+        DirectQuestionBox.Clear();
+        try
+        {
+            await AskAndRecordAsync(question, isSelection: false);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write($"Direct question failed: {ex}");
+            ShowMessage(FriendlyError(ex), PetState.Error);
+        }
+        finally
+        {
+            _requestCancellation?.Dispose();
+            _requestCancellation = null;
+            _busy = false;
+        }
+    }
+
+    private async Task AskAndRecordAsync(string input, bool isSelection)
+    {
+        SetPetState(PetState.Thinking);
+        _requestCancellation = new CancellationTokenSource();
+        AppLog.Write($"Starting Codex request. Mode={(isSelection ? "selection" : "direct")}; ContextTurns={_conversation.Count}");
+        var answer = await _codex.AskAsync(input, _conversation, isSelection,
+            _requestCancellation.Token);
+        AppLog.Write($"Codex request completed. AnswerLength={answer.Length}");
+
+        if (_settings.ContextTurns > 0)
+        {
+            var storedInput = input.Length > _settings.MaximumSelectionCharacters
+                ? input[.._settings.MaximumSelectionCharacters]
+                : input;
+            _conversation.Add(new ConversationTurn(
+                isSelection ? $"[所选文字]\n{storedInput}" : storedInput, answer));
+            while (_conversation.Count > _settings.ContextTurns)
+                _conversation.RemoveAt(0);
+        }
+
+        UpdateContextHint();
+        ShowMessage(answer, PetState.Ready);
+    }
+
+    private void UpdateContextHint() =>
+        HintText.Text = $"{_conversation.Count} 轮上下文";
+
+    private void ClearContext_Click(object sender, RoutedEventArgs e) => ClearContext();
+
+    private void ClearContext()
+    {
+        _conversation.Clear();
+        UpdateContextHint();
+        ShowMessage("对话上下文已清空。下一次提问会从全新会话开始。", PetState.Idle);
+        AppLog.Write("Conversation context cleared.");
+    }
+
+    private void FocusQuestion_Click(object sender, RoutedEventArgs e)
+    {
+        AnswerPanel.Visibility = Visibility.Visible;
+        Activate();
+        DirectQuestionBox.Focus();
+    }
+
+    private void OpenSettings_Click(object sender, RoutedEventArgs e) => OpenSettings();
+
+    private void OpenSettings()
+    {
+        var wasTopmost = Topmost;
+        Topmost = false;
+        var dialog = new SettingsWindow(_settings) { Owner = this, Topmost = true };
+        if (dialog.ShowDialog() == true)
+        {
+            Topmost = _settings.StayOnTop;
+            _petController.Reload(_settings.PetPackPath);
+            while (_conversation.Count > _settings.ContextTurns)
+                _conversation.RemoveAt(0);
+            UpdateContextHint();
+            ShowMessage("设置已保存并应用。", PetState.Ready);
+            AppLog.Write("Settings saved and applied.");
+        }
+        else
+        {
+            Topmost = wasTopmost;
+        }
+    }
 
     private void PetBody_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
@@ -259,5 +410,6 @@ public partial class MainWindow : Window
         _requestCancellation?.Cancel();
         _hotKey?.Dispose();
         _trayIcon?.Dispose();
+        _petController.Dispose();
     }
 }
