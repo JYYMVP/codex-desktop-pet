@@ -43,6 +43,10 @@ ChatGPT 桌面版的 **Codex** 界面中发送一段安装请求，由 Codex 完
 
 ### 测试官方 Pets 增强分支
 
+该分支在官方 Pets 外观和原生任务状态之上增加划词、OCR 与可选碎碎念。划词内容填入
+Quick Chat 并等待确认；OCR 和吐槽显示在插件自己的临时辅助气泡中，因为官方 Pets 没有
+公开的第三方气泡注入接口。
+
 在该功能合并进 `plugin` 前，如果 GitHub 上已经存在
 `codex/official-pets-companion` 远程分支，可以把上面的“稳定插件分支”改为：
 

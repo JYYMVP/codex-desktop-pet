@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "codex-desktop-pet",
-  "version": "0.6.0",
-  "description": "Configure and run Windows selection shortcuts for official Pets Quick Chat or a standalone Codex desktop pet.",
+  "version": "0.7.0",
+  "description": "Add Windows selection, OCR, and opt-in screen comments to official Pets Quick Chat or a standalone Codex desktop pet.",
   "author": {
     "name": "JYYMVP",
     "url": "https://github.com/JYYMVP"
@@ -16,7 +16,7 @@
       "interface": {
         "displayName": "Codex Desktop Pet",
         "shortDescription": "Selection tools for Pets",
-        "longDescription": "Configure the native Windows helper from the plugin details page, add a global selected-text shortcut to official Pets Quick Chat, or use the standalone Codex-styled companion with persistent chats and screen comments.",
+        "longDescription": "Configure the native Windows helper from the plugin details page, add global selected-text and OCR shortcuts plus opt-in comment bubbles alongside official Pets, or use the standalone Codex-styled companion with persistent chats and screen comments.",
         "developerName": "JYYMVP",
         "category": "Productivity",
         "capabilities": ["Interactive", "Read", "Write"],

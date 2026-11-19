@@ -85,8 +85,8 @@
                   Content="Fast 模式（响应更快，但消耗更多套餐额度）" />
 
         <CheckBox x:Name="OfficialPetsModeBox" Grid.Row="6" Grid.Column="1" Margin="0,8,0,6"
-                  Content="官方 Pets 增强模式（划词后填入 Quick Chat，发送前由我确认）"
-                  ToolTip="启用后隐藏独立桌宠窗口，使用 Windows+Alt+P 唤起官方 Pets" />
+                  Content="官方 Pets 增强模式（划词填入 Quick Chat；OCR 与碎碎念使用辅助气泡）"
+                  ToolTip="启用后隐藏独立桌宠；划词内容发送前由你确认，OCR 与吐槽不会替换官方宠物形象" />
 
         <CheckBox x:Name="PetHiddenBox" Grid.Row="7" Grid.Column="1" Margin="0,8,0,6"
                   Content="启动后隐藏独立桌宠（可用显示/隐藏快捷键唤回）" />
@@ -123,7 +123,7 @@
         <TextBlock Grid.Row="17" Grid.ColumnSpan="2" Margin="0,18,0,0"
                    Foreground="{StaticResource MutedTextBrush}"
                    TextWrapping="Wrap"
-                   Text="OCR 只在按下专用快捷键或菜单命令后截取你框选的区域，回答后立即删除临时图片。官方 Pets 增强模式只填入划词提问草稿，不会自动发送，且不运行两种自动截图。独立模式中每只宠物使用持久 Codex 对话；自动截图默认关闭并会在回答后删除。" />
+                   Text="OCR 只在按下专用快捷键或菜单命令后截取你框选的区域，回答后立即删除临时图片。官方 Pets 增强模式会把划词提问填入 Quick Chat 并等待你确认；OCR 与可选碎碎念显示在独立辅助气泡中。两种自动截图默认关闭，启用后同样会在回答后删除。" />
 
         <StackPanel Grid.Row="18" Grid.ColumnSpan="2" Orientation="Horizontal"
                     HorizontalAlignment="Right" Margin="0,18,0,0">

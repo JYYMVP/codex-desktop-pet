@@ -15,7 +15,7 @@ Preserve these boundaries:
 - OCR uses a separate configurable shortcut. It must freeze the desktop for an explicit drag selection, send only the cropped region, and delete both temporary images on success, failure, or cancellation.
 - Do not copy code or assets from OpenAI's proprietary Work Pets plugin. Independently implement any compatible exporter from documented file contracts.
 
-Official Pets companion mode is opt-in. It hides the independent pet window, opens the official Pets Quick Chat with `Windows+Alt+P`, and pastes a bounded selected-text prompt. It must leave the prompt unsent so the user can inspect it and press Enter. If the Pets controls do not open, verify that the current ChatGPT desktop app supports Pets and that a pet is enabled before changing the helper.
+Official Pets companion mode is opt-in. It hides the independent pet window, opens the official Pets Quick Chat with `Windows+Alt+P`, and pastes a bounded selected-text prompt. It must leave the prompt unsent so the user can inspect it and press Enter. OCR and opt-in screen comments remain available in this mode and display their results in the helper's separate, temporary bubble; do not claim that the plugin can inject speech into the proprietary official pet overlay. If the Pets controls do not open, verify that the current ChatGPT desktop app supports Pets and that a pet is enabled before changing the helper.
 
 Use the tray's **Official Pets diagnostics** report to distinguish a missing desktop process, an untrusted executable path, a Quick Chat focus timeout, and a completed safe paste. The diagnostic is read-only and cannot determine whether the host's private Pets toggle is enabled.
 

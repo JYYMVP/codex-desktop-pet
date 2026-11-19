@@ -98,7 +98,7 @@ function Get-SettingsSchema {
             OfficialPetsCompanionMode = [ordered]@{
                 type = "boolean"
                 title = "Use official Pets Quick Chat"
-                description = "Hide the standalone pet window and fill selected-text questions into official Pets for review before sending."
+                description = "Hide the standalone pet, fill selected-text questions into official Pets for review, and keep OCR plus opt-in comments in a separate helper bubble."
             }
             PetHidden = [ordered]@{
                 type = "boolean"
@@ -442,7 +442,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     _meta = [ordered]@{
                         "io.modelcontextprotocol/serverInfo" = [ordered]@{
                             name = "codex-desktop-pet-settings"
-                            version = "0.6.0"
+                            version = "0.7.0"
                         }
                     }
                     capabilities = [ordered]@{
@@ -459,7 +459,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     protocolVersion = $protocolVersion
                     serverInfo = [ordered]@{
                         name = "codex-desktop-pet-settings"
-                        version = "0.6.0"
+                        version = "0.7.0"
                     }
                     capabilities = [ordered]@{
                         tools = [ordered]@{ listChanged = $false }

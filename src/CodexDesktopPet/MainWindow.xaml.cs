@@ -20,6 +20,7 @@ public partial class MainWindow : Window
     private readonly AppSettings _settings = AppSettings.Load();
     private readonly SelectionCaptureService _selectionCapture = new();
     private readonly OfficialPetsQuickChatService _officialPets = new();
+    private readonly OfficialPetsBubbleWindow _officialPetsBubble = new();
     private readonly CodexAppServerService _codex;
     private readonly CodexUsageService _usage;
     private readonly PixelPetController _petController;
@@ -241,7 +242,13 @@ public partial class MainWindow : Window
     {
         var menu = new Forms.ContextMenuStrip();
         if (_settings.OfficialPetsCompanionMode)
+        {
             menu.Items.Add("唤起官方 Pets", null, async (_, _) => await ShowFromTrayAsync());
+            menu.Items.Add($"OCR 框选识别（{CurrentOcrHotKey.DisplayName}）", null,
+                async (_, _) => await RecognizeOcrRegionAsync());
+            menu.Items.Add("看一眼屏幕并吐槽", null,
+                async (_, _) => await LookAtScreenAsync(ScreenCommentTrigger.Manual));
+        }
         else
         {
             _trayVisibilityItem = new Forms.ToolStripMenuItem(
@@ -369,6 +376,11 @@ public partial class MainWindow : Window
         var wasVisible = IsVisible;
         try
         {
+            if (_settings.OfficialPetsCompanionMode)
+            {
+                _officialPetsBubble.HideBubble();
+                await Task.Delay(80);
+            }
             if (wasVisible)
             {
                 Hide();
@@ -389,15 +401,21 @@ public partial class MainWindow : Window
             snapshotPath = null;
             AppLog.Write("OCR region captured; starting Codex image request.");
 
-            ShowStandalonePet(persistVisibility: true);
-            WindowState = WindowState.Normal;
-            AnswerPanel.Visibility = Visibility.Visible;
-            SetAnswerMarkdown("正在识别框选区域…");
-            SetPetState(PetState.Thinking);
+            if (!_settings.OfficialPetsCompanionMode)
+            {
+                ShowStandalonePet(persistVisibility: true);
+                WindowState = WindowState.Normal;
+                AnswerPanel.Visibility = Visibility.Visible;
+                SetAnswerMarkdown("正在识别框选区域…");
+                SetPetState(PetState.Thinking);
+            }
             _requestCancellation = new CancellationTokenSource();
             var answer = await _codex.AskAboutOcrRegionAsync(regionPath,
                 CurrentConversationKey, _requestCancellation.Token);
-            ShowMessage(answer, PetState.Ready);
+            if (_settings.OfficialPetsCompanionMode)
+                _officialPetsBubble.ShowComment(answer);
+            else
+                ShowMessage(answer, PetState.Ready);
             AppLog.Write($"OCR region request completed. AnswerLength={answer.Length}");
         }
         catch (Exception ex)
@@ -667,7 +685,7 @@ public partial class MainWindow : Window
         _screenWatchTimer.Stop();
         _screenWatchTimer.Interval = TimeSpan.FromMinutes(
             Math.Clamp(_settings.ScreenWatchingIntervalMinutes, 1, 240));
-        if (_settings.ScreenWatchingEnabled && !_settings.OfficialPetsCompanionMode)
+        if (_settings.ScreenWatchingEnabled)
             _screenWatchTimer.Start();
         AppLog.Write($"Screen watching configured. Enabled={_screenWatchTimer.IsEnabled}; " +
                      $"IntervalMinutes={_screenWatchTimer.Interval.TotalMinutes}");
@@ -679,7 +697,7 @@ public partial class MainWindow : Window
     private async Task LookAtScreenAsync(ScreenCommentTrigger trigger)
     {
         var automatic = trigger != ScreenCommentTrigger.Manual;
-        if (_settings.OfficialPetsCompanionMode || _busy ||
+        if (_busy ||
             trigger == ScreenCommentTrigger.Periodic && !_settings.ScreenWatchingEnabled ||
             trigger == ScreenCommentTrigger.WindowChange && !_settings.WindowChangeCommentsEnabled)
             return;
@@ -689,8 +707,16 @@ public partial class MainWindow : Window
         var wasVisible = IsVisible;
         try
         {
-            SetPetState(PetState.Capturing);
-            StatusText.Text = "正在看一眼屏幕…";
+            if (_settings.OfficialPetsCompanionMode)
+            {
+                _officialPetsBubble.HideBubble();
+                await Task.Delay(80);
+            }
+            if (!_settings.OfficialPetsCompanionMode)
+            {
+                SetPetState(PetState.Capturing);
+                StatusText.Text = "正在看一眼屏幕…";
+            }
             if (wasVisible)
             {
                 Hide();
@@ -699,24 +725,32 @@ public partial class MainWindow : Window
             capturePath = _screenCapture.CaptureDesktop();
             if (wasVisible)
                 Show();
-            HideCommentBubble(resetPetState: false);
-            AnswerPanel.Visibility = Visibility.Collapsed;
-            SetPetState(PetState.Thinking);
-            StatusText.Text = "工作中…";
+            if (!_settings.OfficialPetsCompanionMode)
+            {
+                HideCommentBubble(resetPetState: false);
+                AnswerPanel.Visibility = Visibility.Collapsed;
+                SetPetState(PetState.Thinking);
+                StatusText.Text = "工作中…";
+            }
             _requestCancellation = new CancellationTokenSource();
             var comment = await _codex.CommentOnScreenAsync(capturePath,
                 CurrentConversationKey,
                 triggeredByWindowChange: trigger == ScreenCommentTrigger.WindowChange,
                 cancellationToken: _requestCancellation.Token);
-            ShowCommentBubble(comment);
+            if (_settings.OfficialPetsCompanionMode)
+                _officialPetsBubble.ShowComment(comment);
+            else
+                ShowCommentBubble(comment);
             AppLog.Write($"Screen comment completed. Trigger={trigger}");
         }
         catch (Exception ex)
         {
             AppLog.Write($"Screen comment failed: {ex}");
-            if (!automatic)
+            if (_settings.OfficialPetsCompanionMode && !automatic)
+                ShowTrayNotification(FriendlyError(ex), Forms.ToolTipIcon.Error);
+            else if (!_settings.OfficialPetsCompanionMode && !automatic)
                 ShowMessage(FriendlyError(ex), PetState.Error);
-            else
+            else if (!_settings.OfficialPetsCompanionMode)
                 SetPetState(PetState.Idle);
         }
         finally
@@ -736,7 +770,7 @@ public partial class MainWindow : Window
         var current = ForegroundWindowService.GetCurrent();
         _lastForegroundIdentity = current?.Identity;
         _pendingForegroundIdentity = null;
-        if (_settings.WindowChangeCommentsEnabled && !_settings.OfficialPetsCompanionMode)
+        if (_settings.WindowChangeCommentsEnabled)
             _windowWatchTimer.Start();
         AppLog.Write($"Window change comments configured. " +
                      $"Enabled={_windowWatchTimer.IsEnabled}; " +
@@ -745,8 +779,7 @@ public partial class MainWindow : Window
 
     private async Task CheckForegroundWindowAsync()
     {
-        if (_settings.OfficialPetsCompanionMode ||
-            !_settings.WindowChangeCommentsEnabled || _busy)
+        if (!_settings.WindowChangeCommentsEnabled || _busy)
             return;
 
         var current = ForegroundWindowService.GetCurrent();
@@ -937,6 +970,7 @@ public partial class MainWindow : Window
         _screenWatchTimer.Stop();
         _windowWatchTimer.Stop();
         _commentBubbleTimer.Stop();
+        _officialPetsBubble.Shutdown();
         _codex.Dispose();
         _petController.Dispose();
     }
