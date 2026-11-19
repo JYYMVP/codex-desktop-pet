@@ -136,7 +136,7 @@ internal sealed class PixelPetController : IDisposable
         var pixels = new byte[size * size * 4];
         var accent = state switch
         {
-            PetState.Thinking => MediaColor.FromRgb(187, 139, 255),
+            PetState.Thinking => MediaColor.FromRgb(104, 233, 255),
             PetState.Capturing => MediaColor.FromRgb(111, 207, 255),
             PetState.Ready => MediaColor.FromRgb(104, 233, 255),
             PetState.NeedsInput => MediaColor.FromRgb(255, 190, 90),
@@ -292,6 +292,8 @@ internal sealed class PixelPetController : IDisposable
         }
 
         DrawStateAccent(state, frame, Pixel, accent, highlight, outline);
+        if (state == PetState.Thinking)
+            DrawWorkLaptop(frame, Pixel, outline, shadow, highlight);
 
         var bitmap = new WriteableBitmap(size, size, 96, 96, PixelFormats.Bgra32, null);
         bitmap.WritePixels(new System.Windows.Int32Rect(0, 0, size, size), pixels, size * 4, 0);
@@ -341,6 +343,35 @@ internal sealed class PixelPetController : IDisposable
                 pixel(30, 5 + frame % 2, highlight);
                 break;
         }
+    }
+
+    private static void DrawWorkLaptop(
+        int frame,
+        Action<int, int, MediaColor> pixel,
+        MediaColor outline,
+        MediaColor shadow,
+        MediaColor highlight)
+    {
+        var screen = MediaColor.FromRgb(49, 70, 108);
+        var screenGlow = MediaColor.FromRgb(123, 183, 255);
+
+        for (var y = 20; y <= 26; y++)
+        for (var x = 5; x <= 16; x++)
+            pixel(x, y, x is 5 or 16 || y is 20 or 26 ? outline : screen);
+
+        pixel(10, 22, screenGlow);
+        pixel(9, 23, screenGlow);
+        pixel(10, 23, highlight);
+        pixel(11, 23, screenGlow);
+
+        for (var x = 4; x <= 18; x++)
+            pixel(x, 27, x is 4 or 18 ? outline : shadow);
+        for (var x = 7; x <= 15; x++)
+            pixel(x, 28, x is 7 or 15 ? outline : shadow);
+
+        var handX = 17 + frame % 2;
+        pixel(handX, 24, highlight);
+        pixel(handX, 25, outline);
     }
 
     private static MediaColor Mix(MediaColor first, MediaColor second, double secondWeight)

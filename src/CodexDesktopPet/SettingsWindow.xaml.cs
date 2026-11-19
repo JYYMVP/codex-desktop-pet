@@ -16,8 +16,10 @@ public partial class SettingsWindow : Window
         LanguageBox.Text = settings.Language;
         HotKeyBox.Text = HotKeyGesture.ParseOrDefault(settings.HotKey).DisplayName;
         OcrHotKeyBox.Text = HotKeyGesture.ParseOrDefault(settings.OcrHotKey).DisplayName;
+        TogglePetHotKeyBox.Text = HotKeyGesture.ParseOrDefault(settings.TogglePetHotKey).DisplayName;
         ReasoningEffortBox.SelectedValue = settings.ReasoningEffort;
         FastModeBox.IsChecked = settings.UseFastMode;
+        PetHiddenBox.IsChecked = settings.PetHidden;
         ScreenWatchingBox.IsChecked = settings.ScreenWatchingEnabled;
         ScreenIntervalBox.Text = settings.ScreenWatchingIntervalMinutes.ToString();
         WindowChangeCommentsBox.IsChecked = settings.WindowChangeCommentsEnabled;
@@ -55,10 +57,19 @@ public partial class SettingsWindow : Window
             ValidationText.Text = ocrHotKeyError;
             return;
         }
-        if (string.Equals(hotKey.DisplayName, ocrHotKey.DisplayName,
-                StringComparison.OrdinalIgnoreCase))
+        if (!HotKeyGesture.TryParse(TogglePetHotKeyBox.Text, out var togglePetHotKey,
+                out var toggleHotKeyError))
         {
-            ValidationText.Text = "划词提问和 OCR 框选不能使用同一个快捷键。";
+            ValidationText.Text = toggleHotKeyError;
+            return;
+        }
+        var distinctHotKeys = new[]
+        {
+            hotKey.DisplayName, ocrHotKey.DisplayName, togglePetHotKey.DisplayName
+        }.Distinct(StringComparer.OrdinalIgnoreCase).Count() == 3;
+        if (!distinctHotKeys)
+        {
+            ValidationText.Text = "划词提问、OCR 框选和显示/隐藏必须使用三个不同快捷键。";
             return;
         }
 
@@ -66,8 +77,10 @@ public partial class SettingsWindow : Window
         _settings.Language = LanguageBox.Text.Trim();
         _settings.HotKey = hotKey.DisplayName;
         _settings.OcrHotKey = ocrHotKey.DisplayName;
+        _settings.TogglePetHotKey = togglePetHotKey.DisplayName;
         _settings.ReasoningEffort = reasoning;
         _settings.UseFastMode = FastModeBox.IsChecked == true;
+        _settings.PetHidden = PetHiddenBox.IsChecked == true;
         _settings.ScreenWatchingEnabled = ScreenWatchingBox.IsChecked == true;
         _settings.ScreenWatchingIntervalMinutes = screenInterval;
         _settings.WindowChangeCommentsEnabled = WindowChangeCommentsBox.IsChecked == true;
@@ -88,6 +101,9 @@ public partial class SettingsWindow : Window
 
     private void OcrHotKeyBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         => CaptureHotKey(e, OcrHotKeyBox);
+
+    private void TogglePetHotKeyBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        => CaptureHotKey(e, TogglePetHotKeyBox);
 
     private void CaptureHotKey(System.Windows.Input.KeyEventArgs e, System.Windows.Controls.TextBox target)
     {

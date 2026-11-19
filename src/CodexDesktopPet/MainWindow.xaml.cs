@@ -16,6 +16,7 @@ public partial class MainWindow : Window
 {
     private const int SelectionHotKeyId = 0xC0DE;
     private const int OcrHotKeyId = 0xC0DF;
+    private const int TogglePetHotKeyId = 0xC0E0;
     private readonly AppSettings _settings = AppSettings.Load();
     private readonly SelectionCaptureService _selectionCapture = new();
     private readonly CodexAppServerService _codex;
@@ -24,9 +25,12 @@ public partial class MainWindow : Window
     private readonly ScreenCaptureService _screenCapture = new();
     private readonly DispatcherTimer _screenWatchTimer = new();
     private readonly DispatcherTimer _windowWatchTimer = new();
+    private readonly DispatcherTimer _commentBubbleTimer = new();
     private GlobalHotKeyManager? _hotKey;
     private GlobalHotKeyManager? _ocrHotKey;
+    private GlobalHotKeyManager? _togglePetHotKey;
     private Forms.NotifyIcon? _trayIcon;
+    private Forms.ToolStripMenuItem? _trayVisibilityItem;
     private CancellationTokenSource? _requestCancellation;
     private bool _allowClose;
     private bool _busy;
@@ -49,6 +53,8 @@ public partial class MainWindow : Window
             await LookAtScreenAsync(ScreenCommentTrigger.Periodic);
         _windowWatchTimer.Interval = TimeSpan.FromMilliseconds(750);
         _windowWatchTimer.Tick += async (_, _) => await CheckForegroundWindowAsync();
+        _commentBubbleTimer.Interval = TimeSpan.FromSeconds(9);
+        _commentBubbleTimer.Tick += (_, _) => HideCommentBubble(resetPetState: true);
         SetAnswerMarkdown(_answerMarkdown);
     }
 
@@ -73,6 +79,9 @@ public partial class MainWindow : Window
             AppLog.Write($"Hotkey registration failed: {ex}");
             ShowMessage(ex.Message, PetState.Error);
         }
+
+        if (_settings.PetHidden)
+            Dispatcher.BeginInvoke(Hide, DispatcherPriority.Background);
     }
 
     private async void HotKey_Pressed(object? sender, EventArgs e)
@@ -83,7 +92,7 @@ public partial class MainWindow : Window
 
         _busy = true;
         if (!IsVisible)
-            Show();
+            ShowStandalonePet(persistVisibility: true);
         AnswerPanel.Visibility = Visibility.Collapsed;
         SetPetState(PetState.Capturing);
 
@@ -118,9 +127,29 @@ public partial class MainWindow : Window
 
     private void ShowMessage(string message, PetState state)
     {
+        HideCommentBubble(resetPetState: false);
         SetAnswerMarkdown(message);
         AnswerPanel.Visibility = Visibility.Visible;
         SetPetState(state);
+    }
+
+    private void ShowCommentBubble(string comment)
+    {
+        _commentBubbleTimer.Stop();
+        AnswerPanel.Visibility = Visibility.Collapsed;
+        CommentText.Text = comment.Trim();
+        CommentBubble.Visibility = Visibility.Visible;
+        SetPetState(PetState.Ready);
+        StatusText.Text = "刚刚看到的桌面";
+        _commentBubbleTimer.Start();
+    }
+
+    private void HideCommentBubble(bool resetPetState)
+    {
+        _commentBubbleTimer.Stop();
+        CommentBubble.Visibility = Visibility.Collapsed;
+        if (resetPetState && !_busy)
+            SetPetState(PetState.Idle);
     }
 
     private void SetAnswerMarkdown(string markdown)
@@ -182,7 +211,10 @@ public partial class MainWindow : Window
     private void CreateTrayIcon()
     {
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("显示桌宠", null, (_, _) => ShowFromTray());
+        _trayVisibilityItem = new Forms.ToolStripMenuItem(
+            $"显示 / 隐藏桌宠（{CurrentTogglePetHotKey.DisplayName}）",
+            null, (_, _) => TogglePetVisibility());
+        menu.Items.Add(_trayVisibilityItem);
         menu.Items.Add($"OCR 框选识别（{CurrentOcrHotKey.DisplayName}）", null,
             async (_, _) => await RecognizeOcrRegionAsync());
         menu.Items.Add("查看 Codex 套餐额度", null,
@@ -202,16 +234,47 @@ public partial class MainWindow : Window
             ContextMenuStrip = menu,
             Visible = true
         };
-        _trayIcon.DoubleClick += (_, _) => ShowFromTray();
+        _trayIcon.DoubleClick += (_, _) => TogglePetVisibility();
     }
 
     private void ShowFromTray()
     {
+        ShowStandalonePet(persistVisibility: true);
+    }
+
+    private void ShowStandalonePet(bool persistVisibility)
+    {
+        if (persistVisibility && _settings.PetHidden)
+        {
+            _settings.PetHidden = false;
+            _settings.Save();
+        }
         Show();
         WindowState = WindowState.Normal;
         Topmost = false;
-        Topmost = true;
+        Topmost = _settings.StayOnTop;
     }
+
+    private void HideStandalonePet(bool persistVisibility)
+    {
+        if (persistVisibility && !_settings.PetHidden)
+        {
+            _settings.PetHidden = true;
+            _settings.Save();
+        }
+        Hide();
+    }
+
+    private void TogglePetVisibility()
+    {
+        if (IsVisible)
+            HideStandalonePet(persistVisibility: true);
+        else
+            ShowStandalonePet(persistVisibility: true);
+        AppLog.Write($"Pet visibility toggled. Visible={IsVisible}; HotKey={CurrentTogglePetHotKey.DisplayName}");
+    }
+
+    private void TogglePetHotKey_Pressed(object? sender, EventArgs e) => TogglePetVisibility();
 
     private void ExitApplication()
     {
@@ -262,7 +325,7 @@ public partial class MainWindow : Window
             snapshotPath = null;
             AppLog.Write("OCR region captured; starting Codex image request.");
 
-            Show();
+            ShowStandalonePet(persistVisibility: true);
             WindowState = WindowState.Normal;
             AnswerPanel.Visibility = Visibility.Visible;
             SetAnswerMarkdown("正在识别框选区域…");
@@ -277,7 +340,7 @@ public partial class MainWindow : Window
         {
             AppLog.Write($"OCR region request failed: {ex}");
             if (!IsVisible)
-                Show();
+                ShowStandalonePet(persistVisibility: true);
             ShowMessage(FriendlyError(ex), PetState.Error);
         }
         finally
@@ -349,7 +412,14 @@ public partial class MainWindow : Window
         MoreButton.ContextMenu.IsOpen = true;
     }
 
-    private void HidePet_Click(object sender, RoutedEventArgs e) => Hide();
+    private void HidePet_Click(object sender, RoutedEventArgs e) =>
+        HideStandalonePet(persistVisibility: true);
+
+    private void CommentBubble_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        HideCommentBubble(resetPetState: true);
+        e.Handled = true;
+    }
 
     private void ExitMenu_Click(object sender, RoutedEventArgs e) => ExitApplication();
 
@@ -446,6 +516,7 @@ public partial class MainWindow : Window
         var wasTopmost = Topmost;
         var previousHotKey = _settings.HotKey;
         var previousOcrHotKey = _settings.OcrHotKey;
+        var previousTogglePetHotKey = _settings.TogglePetHotKey;
         Topmost = false;
         var dialog = new SettingsWindow(_settings) { Owner = this, Topmost = true };
         if (dialog.ShowDialog() == true)
@@ -459,6 +530,7 @@ public partial class MainWindow : Window
             {
                 _settings.HotKey = previousHotKey;
                 _settings.OcrHotKey = previousOcrHotKey;
+                _settings.TogglePetHotKey = previousTogglePetHotKey;
                 _settings.Save();
                 try { RegisterConfiguredHotKey(); } catch { }
                 UpdateHotKeyPresentation();
@@ -471,7 +543,15 @@ public partial class MainWindow : Window
             ConfigureScreenWatching();
             ConfigureWindowChangeComments();
             UpdateContextHint();
-            ShowMessage("设置已保存并应用。", PetState.Ready);
+            RecreateTrayIcon();
+            if (_settings.PetHidden)
+                Hide();
+            else
+            {
+                if (!IsVisible)
+                    ShowStandalonePet(persistVisibility: false);
+                ShowMessage("设置已保存并应用。", PetState.Ready);
+            }
             AppLog.Write("Settings saved and applied.");
         }
         else
@@ -480,11 +560,21 @@ public partial class MainWindow : Window
         }
     }
 
+    private void RecreateTrayIcon()
+    {
+        _trayIcon?.Dispose();
+        _trayIcon = null;
+        CreateTrayIcon();
+    }
+
     private HotKeyGesture CurrentHotKey =>
         HotKeyGesture.ParseOrDefault(_settings.HotKey);
 
     private HotKeyGesture CurrentOcrHotKey =>
         HotKeyGesture.ParseOrDefault(_settings.OcrHotKey);
+
+    private HotKeyGesture CurrentTogglePetHotKey =>
+        HotKeyGesture.ParseOrDefault(_settings.TogglePetHotKey);
 
     private string CurrentConversationKey
     {
@@ -534,15 +624,16 @@ public partial class MainWindow : Window
             capturePath = _screenCapture.CaptureDesktop();
             if (wasVisible)
                 Show();
-            AnswerPanel.Visibility = Visibility.Visible;
-            SetAnswerMarkdown("正在想一句桌面吐槽…");
+            HideCommentBubble(resetPetState: false);
+            AnswerPanel.Visibility = Visibility.Collapsed;
             SetPetState(PetState.Thinking);
+            StatusText.Text = "工作中…";
             _requestCancellation = new CancellationTokenSource();
             var comment = await _codex.CommentOnScreenAsync(capturePath,
                 CurrentConversationKey,
                 triggeredByWindowChange: trigger == ScreenCommentTrigger.WindowChange,
                 cancellationToken: _requestCancellation.Token);
-            ShowMessage(comment, PetState.Ready);
+            ShowCommentBubble(comment);
             AppLog.Write($"Screen comment completed. Trigger={trigger}");
         }
         catch (Exception ex)
@@ -646,10 +737,13 @@ public partial class MainWindow : Window
     {
         var gesture = CurrentHotKey;
         var ocrGesture = CurrentOcrHotKey;
+        var toggleGesture = CurrentTogglePetHotKey;
         _hotKey?.Dispose();
         _hotKey = null;
         _ocrHotKey?.Dispose();
         _ocrHotKey = null;
+        _togglePetHotKey?.Dispose();
+        _togglePetHotKey = null;
 
         var hotKey = new GlobalHotKeyManager(this, SelectionHotKeyId,
             gesture.Modifiers, gesture.Key, gesture.DisplayName);
@@ -662,13 +756,21 @@ public partial class MainWindow : Window
                 ocrGesture.Modifiers, ocrGesture.Key, ocrGesture.DisplayName);
             ocrHotKey.Pressed += OcrHotKey_Pressed;
             _ocrHotKey = ocrHotKey;
+            var toggleHotKey = new GlobalHotKeyManager(this, TogglePetHotKeyId,
+                toggleGesture.Modifiers, toggleGesture.Key, toggleGesture.DisplayName);
+            toggleHotKey.Pressed += TogglePetHotKey_Pressed;
+            _togglePetHotKey = toggleHotKey;
             AppLog.Write($"Global hotkeys registered. Selection={gesture.DisplayName}; " +
-                         $"OCR={ocrGesture.DisplayName}");
+                         $"OCR={ocrGesture.DisplayName}; TogglePet={toggleGesture.DisplayName}");
         }
         catch
         {
             _ocrHotKey?.Dispose();
             _ocrHotKey = null;
+            _togglePetHotKey?.Dispose();
+            _togglePetHotKey = null;
+            _hotKey?.Dispose();
+            _hotKey = null;
             throw;
         }
     }
@@ -676,11 +778,20 @@ public partial class MainWindow : Window
     private void UpdateHotKeyPresentation()
     {
         var displayName = CurrentHotKey.DisplayName;
+        var ocrDisplayName = CurrentOcrHotKey.DisplayName;
+        var toggleDisplayName = CurrentTogglePetHotKey.DisplayName;
         StatusText.Text = $"选中文字后按 {displayName}";
+        PetBody.ToolTip = $"单击：展开/收起回答\n拖动：移动桌宠\n显示/隐藏：{toggleDisplayName}";
+        PetOcrMenuItem.Header = $"OCR 框选识别（{ocrDisplayName}）";
+        MoreOcrMenuItem.Header = $"OCR 框选识别（{ocrDisplayName}）";
+        PetHideMenuItem.Header = $"隐藏桌宠（{toggleDisplayName}）";
+        MoreHideMenuItem.Header = $"隐藏桌宠（{toggleDisplayName}）";
         if (_answerMarkdown.StartsWith("我已经就位。", StringComparison.Ordinal))
             SetAnswerMarkdown($"我已经就位。选中文字后按 {displayName}，我会给出简要回答。");
         if (_trayIcon is not null)
             _trayIcon.Text = $"Codex 桌宠 — {displayName}";
+        if (_trayVisibilityItem is not null)
+            _trayVisibilityItem.Text = $"显示 / 隐藏桌宠（{toggleDisplayName}）";
     }
 
     private void PetBody_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -716,9 +827,12 @@ public partial class MainWindow : Window
         PetBody.ReleaseMouseCapture();
         if (_petPressPosition is not null && !_petDragged)
         {
-            AnswerPanel.Visibility = AnswerPanel.Visibility == Visibility.Visible
-                ? Visibility.Collapsed
-                : Visibility.Visible;
+            if (CommentBubble.Visibility == Visibility.Visible)
+                HideCommentBubble(resetPetState: true);
+            else
+                AnswerPanel.Visibility = AnswerPanel.Visibility == Visibility.Visible
+                    ? Visibility.Collapsed
+                    : Visibility.Visible;
             AppLog.Write($"Pet clicked. AnswerVisible={AnswerPanel.Visibility == Visibility.Visible}");
         }
 
@@ -732,7 +846,7 @@ public partial class MainWindow : Window
         if (!_allowClose)
         {
             e.Cancel = true;
-            Hide();
+            HideStandalonePet(persistVisibility: true);
         }
     }
 
@@ -742,9 +856,11 @@ public partial class MainWindow : Window
         _requestCancellation?.Cancel();
         _hotKey?.Dispose();
         _ocrHotKey?.Dispose();
+        _togglePetHotKey?.Dispose();
         _trayIcon?.Dispose();
         _screenWatchTimer.Stop();
         _windowWatchTimer.Stop();
+        _commentBubbleTimer.Stop();
         _codex.Dispose();
         _petController.Dispose();
     }

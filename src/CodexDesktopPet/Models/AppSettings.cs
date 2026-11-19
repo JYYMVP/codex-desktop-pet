@@ -13,8 +13,10 @@ internal sealed class AppSettings
     public string Language { get; set; } = "简体中文";
     public string ReasoningEffort { get; set; } = "none";
     public bool UseFastMode { get; set; }
+    public bool PetHidden { get; set; }
     public string HotKey { get; set; } = HotKeyGesture.DefaultValue;
     public string OcrHotKey { get; set; } = "Ctrl+Alt+R";
+    public string TogglePetHotKey { get; set; } = "Ctrl+Alt+H";
     public string PetPackPath { get; set; } = string.Empty;
     public Dictionary<string, string> PetConversationThreadIds { get; set; } =
         new(StringComparer.OrdinalIgnoreCase);
@@ -58,6 +60,19 @@ internal sealed class AppSettings
                 loaded.OcrHotKey = "Ctrl+Alt+R";
             else
                 loaded.OcrHotKey = ocrHotKey.DisplayName;
+            if (!HotKeyGesture.TryParse(loaded.TogglePetHotKey, out var toggleHotKey, out _) ||
+                string.Equals(toggleHotKey.DisplayName, loaded.HotKey,
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(toggleHotKey.DisplayName, loaded.OcrHotKey,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                loaded.TogglePetHotKey = new[] { "Ctrl+Alt+H", "Ctrl+Shift+H", "Ctrl+Alt+Space" }
+                    .First(candidate =>
+                        !string.Equals(candidate, loaded.HotKey, StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(candidate, loaded.OcrHotKey, StringComparison.OrdinalIgnoreCase));
+            }
+            else
+                loaded.TogglePetHotKey = toggleHotKey.DisplayName;
             // `minimal` is rejected by several Codex models (including
             // gpt-5.6-sol) after expensive transport retries. `none` is the
             // model-supported no-reasoning fast path.
