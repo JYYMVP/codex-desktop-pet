@@ -43,9 +43,10 @@
         </Grid>
 
         <WrapPanel Grid.Row="3">
-            <Button Content="导入 / 领养" Click="Import_Click" Padding="12,6" Margin="0,0,7,0" />
-            <Button Content="选用" Click="Select_Click" Padding="12,6" Margin="0,0,7,0"
+            <Button Content="新建像素宠物" Click="CreatePixelPet_Click" Padding="12,6" Margin="0,0,7,0"
                     Style="{StaticResource PrimaryButtonStyle}" />
+            <Button Content="导入 / 领养" Click="Import_Click" Padding="12,6" Margin="0,0,7,0" />
+            <Button Content="选用" Click="Select_Click" Padding="12,6" Margin="0,0,7,0" />
             <Button Content="保存资料" Click="SaveMetadata_Click" Padding="12,6" Margin="0,0,7,0" />
             <Button Content="校验" Click="Validate_Click" Padding="12,6" Margin="0,0,7,0" />
             <Button Content="导出分享包" Click="Export_Click" Padding="12,6" Margin="0,0,7,0" />

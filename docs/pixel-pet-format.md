@@ -48,5 +48,9 @@ export, and permanently delete local pets. To adopt a pet, choose its `pet.json`
 archive. A `.codexpet` file is a ZIP-compatible snapshot containing exactly one manifest and its
 frames; it contains no owner identity or account credentials.
 
+Choose **新建像素宠物** to draw a static pet on an 8×8 to 64×64 grid. The built-in editor provides
+a pencil, eraser, flood fill, palette, custom hexadecimal colours, transparent background, and a
+nearest-neighbour preview. It writes a valid one-frame `idle` pack directly into the local library.
+
 This local sharing format is independent from ChatGPT Work Pets. Revocable public `sharepet_`
 URLs require a hosted backend and are not simulated by the desktop application.
