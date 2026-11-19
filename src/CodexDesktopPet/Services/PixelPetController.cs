@@ -164,38 +164,45 @@ internal sealed class PixelPetController : IDisposable
             }
         }
 
-        // A round sprout mascot is clearer and friendlier than a tiny side-view
-        // animal. The body is intentionally almost symmetrical so expressions
-        // stay readable at the 32x32 logical resolution.
-        for (var y = 8; y <= 25; y++)
+        // A compact water-drop silhouette inspired by the user's reference:
+        // pointed crown, broad cheeks and a softly rounded base.
+        silhouette[16, 2] = true;
+        for (var y = 3; y <= 12; y++)
+        {
+            var halfWidth = Math.Max(1, (int)Math.Round((y - 1) * 0.72));
+            for (var x = 16 - halfWidth; x <= 16 + halfWidth; x++)
+                silhouette[x, y] = true;
+        }
+        for (var y = 9; y <= 24; y++)
         for (var x = 6; x <= 26; x++)
         {
-            var dx = (x - 16.0) / 10.0;
-            var dy = (y - 16.5) / 8.8;
+            var dx = (x - 16.0) / 10.1;
+            var dy = (y - 16.6) / 8.7;
             if (dx * dx + dy * dy <= 1)
                 silhouette[x, y] = true;
         }
 
-        // A tiny sprout, two stubby feet, and one waving arm give it a mascot
-        // silhouette without relying on high-resolution details.
-        silhouette[16, 5] = silhouette[16, 6] = silhouette[16, 7] = true;
-        silhouette[13, 4] = silhouette[14, 4] = silhouette[14, 5] = true;
-        silhouette[15, 5] = silhouette[15, 6] = true;
-        silhouette[17, 3] = silhouette[18, 3] = silhouette[18, 4] = true;
-        silhouette[17, 4] = silhouette[17, 5] = silhouette[17, 6] = true;
-        for (var x = 10; x <= 14; x++)
-            silhouette[x, 25 + (x is 11 or 12 or 13 ? 1 : 0)] = true;
-        for (var x = 18; x <= 22; x++)
-            silhouette[x, 25 + (x is 19 or 20 or 21 ? 1 : 0)] = true;
+        // Detached boot-like feet and tiny animated arms match the reference
+        // without making the face too busy at 32 logical pixels.
+        for (var y = 26; y <= 28; y++)
+        for (var x = 10; x <= 13; x++)
+            silhouette[x, y] = y < 28 || x <= 12;
+        for (var y = 26; y <= 28; y++)
+        for (var x = 20; x <= 23; x++)
+            silhouette[x, y] = y < 28 || x >= 21;
 
-        var leftArmTop = 15 + (frame switch { 1 => -2, 2 => -1, _ => 0 });
-        silhouette[5, leftArmTop] = true;
-        silhouette[4, leftArmTop + 1] = true;
-        silhouette[4, leftArmTop + 2] = true;
-        silhouette[5, leftArmTop + 3] = true;
-        silhouette[6, leftArmTop + 3] = true;
-        silhouette[26, 16] = silhouette[27, 17] = silhouette[27, 18] = true;
-        silhouette[26, 19] = true;
+        var leftArmY = 17 + (frame switch { 1 => -1, 2 => 1, _ => 0 });
+        silhouette[6, leftArmY] = true;
+        silhouette[5, leftArmY + 1] = true;
+        silhouette[4, leftArmY + 2] = true;
+        silhouette[5, leftArmY + 2] = true;
+        silhouette[6, leftArmY + 3] = true;
+        var rightArmY = 17 + (frame switch { 2 => -1, 3 => 1, _ => 0 });
+        silhouette[26, rightArmY] = true;
+        silhouette[27, rightArmY + 1] = true;
+        silhouette[28, rightArmY + 2] = true;
+        silhouette[27, rightArmY + 2] = true;
+        silhouette[26, rightArmY + 3] = true;
 
         for (var y = 0; y < logicalSize; y++)
         for (var x = 0; x < logicalSize; x++)
@@ -221,70 +228,67 @@ internal sealed class PixelPetController : IDisposable
 
             var fill = boundary
                 ? outline
-                : y >= 21
+                : y >= 22 || y >= 26
                     ? shadow
-                    : y <= 11 && x is >= 9 and <= 18
-                        ? highlight
-                        : accent;
+                    : accent;
             Pixel(x, y, fill);
         }
 
-        // Soft belly, glossy forehead, and rosy cheeks keep the sprite from
-        // reading as a flat colored circle.
-        var belly = Mix(accent, MediaColor.FromRgb(248, 255, 255), 0.42);
-        for (var y = 20; y <= 22; y++)
-        for (var x = 12 + (y - 20); x <= 20 - (y - 20); x++)
-            Pixel(x, y, belly);
-        Pixel(10, 10, highlight); Pixel(11, 9, highlight); Pixel(12, 9, highlight);
-        Pixel(13, 10, highlight); Pixel(5, leftArmTop + 1, highlight);
-        var sprout = MediaColor.FromRgb(139, 232, 156);
-        Pixel(14, 4, sprout); Pixel(14, 5, sprout); Pixel(15, 5, sprout);
-        Pixel(17, 3, sprout); Pixel(18, 3, sprout); Pixel(17, 4, sprout);
-        Pixel(16, 6, sprout);
+        // The large off-centre glossy patch is the defining feature of the
+        // reference mascot. Its stepped edge keeps it crisp at native size.
+        var gloss = Mix(highlight, MediaColor.FromRgb(255, 255, 255), 0.34);
+        Pixel(14, 5, gloss); Pixel(15, 5, gloss);
+        for (var y = 6; y <= 9; y++)
+        for (var x = 12; x <= 16 - (y > 7 ? 1 : 0); x++)
+            Pixel(x, y, gloss);
+        Pixel(11, 9, gloss); Pixel(12, 10, gloss); Pixel(13, 10, gloss);
+        Pixel(11, 11, highlight); Pixel(12, 11, highlight);
+        Pixel(6, leftArmY + 1, highlight);
 
-        // Two oversized eyes, blush, and a tiny mouth carry most of the charm.
+        // Small vertical eyes, blush, and a tiny smile keep the face closer to
+        // the supplied reference than the previous oversized-eye design.
         var blink = state == PetState.Thinking && frame == 2;
         var cheek = state == PetState.Error
             ? MediaColor.FromRgb(255, 116, 142)
             : MediaColor.FromRgb(255, 158, 184);
         if (state == PetState.Error)
         {
-            Pixel(11, 13, outline); Pixel(13, 15, outline);
-            Pixel(13, 13, outline); Pixel(11, 15, outline);
-            Pixel(19, 13, outline); Pixel(21, 15, outline);
-            Pixel(21, 13, outline); Pixel(19, 15, outline);
+            Pixel(12, 15, outline); Pixel(13, 16, outline);
+            Pixel(13, 15, outline); Pixel(12, 16, outline);
+            Pixel(20, 15, outline); Pixel(21, 16, outline);
+            Pixel(21, 15, outline); Pixel(20, 16, outline);
         }
         else if (blink)
         {
-            Pixel(11, 14, outline); Pixel(12, 14, outline); Pixel(13, 14, outline);
-            Pixel(19, 14, outline); Pixel(20, 14, outline); Pixel(21, 14, outline);
+            Pixel(12, 16, outline); Pixel(13, 16, outline);
+            Pixel(20, 16, outline); Pixel(21, 16, outline);
         }
         else
         {
-            Pixel(11, 12, outline); Pixel(12, 12, outline); Pixel(13, 12, outline);
-            Pixel(10, 13, outline); Pixel(11, 13, eyeWhite); Pixel(12, 13, eyeWhite); Pixel(13, 13, outline);
-            Pixel(10, 14, outline); Pixel(11, 14, eyeWhite); Pixel(12, 14, outline); Pixel(13, 14, outline);
-            Pixel(11, 15, outline); Pixel(12, 15, outline); Pixel(13, 15, outline);
+            Pixel(12, 15, eyeWhite); Pixel(13, 15, outline);
+            Pixel(12, 16, outline); Pixel(13, 16, outline);
+            Pixel(12, 17, outline); Pixel(13, 17, outline);
 
-            Pixel(19, 12, outline); Pixel(20, 12, outline); Pixel(21, 12, outline);
-            Pixel(19, 13, outline); Pixel(20, 13, eyeWhite); Pixel(21, 13, eyeWhite); Pixel(22, 13, outline);
-            Pixel(19, 14, outline); Pixel(20, 14, outline); Pixel(21, 14, eyeWhite); Pixel(22, 14, outline);
-            Pixel(19, 15, outline); Pixel(20, 15, outline); Pixel(21, 15, outline);
+            Pixel(20, 15, eyeWhite); Pixel(21, 15, outline);
+            Pixel(20, 16, outline); Pixel(21, 16, outline);
+            Pixel(20, 17, outline); Pixel(21, 17, outline);
         }
-        Pixel(8, 18, cheek); Pixel(9, 18, cheek);
-        Pixel(23, 18, cheek); Pixel(24, 18, cheek);
+        Pixel(8, 19, cheek); Pixel(9, 19, cheek); Pixel(10, 19, cheek);
+        Pixel(8, 20, cheek); Pixel(9, 20, cheek);
+        Pixel(23, 19, cheek); Pixel(24, 19, cheek); Pixel(25, 19, cheek);
+        Pixel(24, 20, cheek); Pixel(25, 20, cheek);
 
         if (state == PetState.Error)
         {
-            Pixel(15, 20, outline); Pixel(16, 19, outline); Pixel(17, 20, outline);
+            Pixel(15, 21, outline); Pixel(16, 20, outline); Pixel(17, 21, outline);
         }
         else if (state == PetState.NeedsInput)
         {
-            Pixel(15, 19, outline); Pixel(16, 19, outline); Pixel(17, 19, outline);
+            Pixel(15, 20, outline); Pixel(16, 20, outline); Pixel(17, 20, outline);
         }
         else
         {
-            Pixel(15, 18, outline); Pixel(16, 19, outline); Pixel(17, 18, outline);
+            Pixel(16, 20, outline); Pixel(17, 20, outline);
         }
 
         DrawStateAccent(state, frame, Pixel, accent, highlight, outline);

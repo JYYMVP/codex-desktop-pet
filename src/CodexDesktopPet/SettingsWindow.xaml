@@ -97,7 +97,7 @@
 
         <TextBlock Grid.Row="13" Text="像素宠物包路径" VerticalAlignment="Center" />
         <TextBox x:Name="PetPackPathBox" Grid.Row="13" Grid.Column="1" Margin="0,5" Padding="7"
-                 ToolTip="留空使用内置 64×64 发芽小精灵；也可填写宠物包目录或 pet.json 路径" />
+                 ToolTip="留空使用内置 64×64 水滴小精灵；也可填写宠物包目录或 pet.json 路径" />
 
         <CheckBox x:Name="StayOnTopBox" Grid.Row="14" Grid.Column="1" Margin="0,12,0,6"
                   Content="桌宠始终置顶" />
