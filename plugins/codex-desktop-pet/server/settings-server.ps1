@@ -21,8 +21,10 @@ $installedExe = Join-Path $settingsDirectory "app\CodexDesktopPet.exe"
 
 $defaults = [ordered]@{
     OfficialPetsCompanionMode = $false
+    PetHidden = $false
     HotKey = "Ctrl+Alt+Q"
     OcrHotKey = "Ctrl+Alt+R"
+    TogglePetHotKey = "Ctrl+Alt+H"
     ScreenWatchingEnabled = $false
     ScreenWatchingIntervalMinutes = 10
     WindowChangeCommentsEnabled = $false
@@ -98,6 +100,11 @@ function Get-SettingsSchema {
                 title = "Use official Pets Quick Chat"
                 description = "Hide the standalone pet window and fill selected-text questions into official Pets for review before sending."
             }
+            PetHidden = [ordered]@{
+                type = "boolean"
+                title = "Hide standalone pet"
+                description = "Keep the Windows helper running but hide its standalone pet window until the show/hide shortcut is pressed."
+            }
             HotKey = [ordered]@{
                 type = "string"
                 title = "Selected-text shortcut"
@@ -110,6 +117,14 @@ function Get-SettingsSchema {
                 type = "string"
                 title = "OCR region shortcut"
                 description = "Freeze the desktop, drag a region, and ask Codex to recognize and explain it."
+                minLength = 3
+                maxLength = 64
+                pattern = "^(?=.*\\+)(?:(?:Ctrl|Alt|Shift|Win)\\+)+(?:[A-Za-z0-9]|F(?:[1-9]|1[0-2])|Space|Enter|Tab|Escape|Delete|Insert|Home|End|PageUp|PageDown|Up|Down|Left|Right)$"
+            }
+            TogglePetHotKey = [ordered]@{
+                type = "string"
+                title = "Show/hide pet shortcut"
+                description = "A Windows global shortcut such as Ctrl+Alt+H."
                 minLength = 3
                 maxLength = 64
                 pattern = "^(?=.*\\+)(?:(?:Ctrl|Alt|Shift|Win)\\+)+(?:[A-Za-z0-9]|F(?:[1-9]|1[0-2])|Space|Enter|Tab|Escape|Delete|Insert|Home|End|PageUp|PageDown|Up|Down|Left|Right)$"
@@ -150,8 +165,10 @@ function Get-SettingsSchema {
         }
         required = @(
             "OfficialPetsCompanionMode",
+            "PetHidden",
             "HotKey",
             "OcrHotKey",
+            "TogglePetHotKey",
             "ScreenWatchingEnabled",
             "ScreenWatchingIntervalMinutes",
             "WindowChangeCommentsEnabled",
@@ -175,6 +192,15 @@ function Get-SettingsLayout {
         },
         [ordered]@{
             kind = "group"
+            title = "Visibility"
+            items = @(
+                [ordered]@{ kind = "property"; property = "PetHidden" },
+                [ordered]@{ kind = "property"; property = "TogglePetHotKey" },
+                [ordered]@{ kind = "property"; property = "StayOnTop" }
+            )
+        },
+        [ordered]@{
+            kind = "group"
             title = "Automatic comments"
             items = @(
                 [ordered]@{ kind = "property"; property = "ScreenWatchingEnabled" },
@@ -187,7 +213,6 @@ function Get-SettingsLayout {
             kind = "group"
             title = "Appearance and performance"
             items = @(
-                [ordered]@{ kind = "property"; property = "StayOnTop" },
                 [ordered]@{ kind = "property"; property = "UseFastMode" },
                 [ordered]@{
                     kind = "tool"
@@ -249,6 +274,9 @@ function Convert-SettingUpdates([object]$SetObject) {
             "OfficialPetsCompanionMode" {
                 $updates[$property.Name] = Convert-StrictBoolean $property.Value $property.Name
             }
+            "PetHidden" {
+                $updates[$property.Name] = Convert-StrictBoolean $property.Value $property.Name
+            }
             "ScreenWatchingEnabled" {
                 $updates[$property.Name] = Convert-StrictBoolean $property.Value $property.Name
             }
@@ -271,6 +299,11 @@ function Convert-SettingUpdates([object]$SetObject) {
                 if (-not (Test-HotKey $value)) { throw "OcrHotKey is not a supported modifier combination." }
                 $updates[$property.Name] = $value
             }
+            "TogglePetHotKey" {
+                $value = [string]$property.Value
+                if (-not (Test-HotKey $value)) { throw "TogglePetHotKey is not a supported modifier combination." }
+                $updates[$property.Name] = $value
+            }
             "ScreenWatchingIntervalMinutes" {
                 $updates[$property.Name] = Convert-StrictInteger `
                     $property.Value $property.Name 1 240
@@ -285,9 +318,13 @@ function Convert-SettingUpdates([object]$SetObject) {
     $current = (Read-SettingsState).Values
     $selectionHotKey = if ($updates.Contains("HotKey")) { $updates["HotKey"] } else { $current.HotKey }
     $ocrHotKey = if ($updates.Contains("OcrHotKey")) { $updates["OcrHotKey"] } else { $current.OcrHotKey }
-    if ([string]::Equals($selectionHotKey, $ocrHotKey,
-            [StringComparison]::OrdinalIgnoreCase)) {
-        throw "HotKey and OcrHotKey must be different."
+    $togglePetHotKey = if ($updates.Contains("TogglePetHotKey")) {
+        $updates["TogglePetHotKey"]
+    } else { $current.TogglePetHotKey }
+    $normalizedHotKeys = @($selectionHotKey, $ocrHotKey, $togglePetHotKey) |
+        ForEach-Object { $_.ToLowerInvariant() } | Select-Object -Unique
+    if ($normalizedHotKeys.Count -ne 3) {
+        throw "HotKey, OcrHotKey and TogglePetHotKey must be different."
     }
     return $updates
 }
@@ -405,7 +442,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     _meta = [ordered]@{
                         "io.modelcontextprotocol/serverInfo" = [ordered]@{
                             name = "codex-desktop-pet-settings"
-                            version = "0.5.0"
+                            version = "0.6.0"
                         }
                     }
                     capabilities = [ordered]@{
@@ -422,7 +459,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     protocolVersion = $protocolVersion
                     serverInfo = [ordered]@{
                         name = "codex-desktop-pet-settings"
-                        version = "0.5.0"
+                        version = "0.6.0"
                     }
                     capabilities = [ordered]@{
                         tools = [ordered]@{ listChanged = $false }

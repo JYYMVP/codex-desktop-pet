@@ -52,22 +52,23 @@
             </Ellipse>
             <Grid x:Name="PetBody" Canvas.Left="41" Canvas.Top="17" Width="128" Height="128"
                   RenderTransformOrigin="0.5,0.5" Cursor="Hand"
-                  ToolTip="单击展开或收起回答；拖动可移动桌宠"
+                  ToolTip="单击：展开/收起回答&#x0a;拖动：移动桌宠&#x0a;显示/隐藏：Ctrl+Alt+H"
                   MouseLeftButtonDown="PetBody_MouseLeftButtonDown"
                   MouseLeftButtonUp="PetBody_MouseLeftButtonUp"
                   MouseMove="PetBody_MouseMove">
                 <Grid.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="直接提问" Click="FocusQuestion_Click" />
-                        <MenuItem Header="OCR 框选识别" Click="OcrRegion_Click" />
+                        <MenuItem x:Name="PetOcrMenuItem" Header="OCR 框选识别（Ctrl+Alt+R）" Click="OcrRegion_Click" />
                         <MenuItem Header="查看 Codex 套餐额度" Click="ShowUsage_Click" />
                         <MenuItem Header="看一眼屏幕并吐槽" Click="LookAtScreen_Click" />
-                        <MenuItem Header="展开 / 收起回答" Click="ToggleAnswer_Click" />
+                        <MenuItem Header="展开 / 收起回答（单击宠物）" Click="ToggleAnswer_Click" />
                         <MenuItem Header="在 Codex 中打开宠物对话" Click="OpenConversation_Click" />
                         <MenuItem Header="新建宠物对话" Click="ClearContext_Click" />
                         <MenuItem Header="宠物库…" Click="OpenPetLibrary_Click" />
                         <MenuItem Header="设置…" Click="OpenSettings_Click" />
                         <Separator />
+                        <MenuItem x:Name="PetHideMenuItem" Header="隐藏桌宠（Ctrl+Alt+H）" Click="HidePet_Click" />
                         <MenuItem Header="退出桌宠" Click="ExitMenu_Click" />
                     </ContextMenu>
                 </Grid.ContextMenu>
@@ -88,6 +89,26 @@
             </Border>
         </Canvas>
 
+        <Grid x:Name="CommentBubble" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+              Margin="42,0,42,205" MaxWidth="300" Visibility="Collapsed"
+              Cursor="Hand" MouseLeftButtonDown="CommentBubble_MouseLeftButtonDown">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="8" />
+            </Grid.RowDefinitions>
+            <Border Padding="13,10" CornerRadius="15" Background="#F51F1F22"
+                    BorderBrush="{StaticResource StrongBorderBrush}" BorderThickness="1">
+                <Border.Effect>
+                    <DropShadowEffect Color="#000000" BlurRadius="18" ShadowDepth="5" Opacity="0.44" />
+                </Border.Effect>
+                <TextBlock x:Name="CommentText" FontSize="12" LineHeight="18"
+                           TextWrapping="Wrap" TextAlignment="Center" />
+            </Border>
+            <Path Grid.Row="1" HorizontalAlignment="Center" Margin="0,-1,0,0"
+                  Data="M 0,0 L 12,0 L 6,7 Z" Fill="#F51F1F22"
+                  Stroke="{StaticResource StrongBorderBrush}" StrokeThickness="1" />
+        </Grid>
+
         <Border Height="54" Margin="18,0,18,14" VerticalAlignment="Bottom"
                 Background="#F218181A" BorderBrush="{StaticResource BorderBrush}"
                 BorderThickness="1" CornerRadius="18">
@@ -102,7 +123,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <Button Content="✎" Click="FocusQuestion_Click"
-                        Style="{StaticResource IconButtonStyle}" ToolTip="快速提问" />
+                        Style="{StaticResource IconButtonStyle}" ToolTip="快速提问（Enter 发送）" />
                 <TextBox x:Name="DirectQuestionBox" Grid.Column="1" Margin="5,0,6,0"
                          Padding="11,7" FontSize="12" VerticalContentAlignment="Center"
                          ToolTip="直接提问，或在划词回答后继续追问"
@@ -118,7 +139,7 @@
                     <Button.ContextMenu>
                         <ContextMenu>
                             <MenuItem Header="复制回答" Click="CopyAnswer_Click" />
-                            <MenuItem Header="OCR 框选识别" Click="OcrRegion_Click" />
+                            <MenuItem x:Name="MoreOcrMenuItem" Header="OCR 框选识别（Ctrl+Alt+R）" Click="OcrRegion_Click" />
                             <MenuItem Header="查看 Codex 套餐额度" Click="ShowUsage_Click" />
                             <MenuItem Header="看一眼屏幕并吐槽" Click="LookAtScreen_Click" />
                             <Separator />
@@ -127,7 +148,7 @@
                             <MenuItem Header="宠物库…" Click="OpenPetLibrary_Click" />
                             <MenuItem Header="设置…" Click="OpenSettings_Click" />
                             <Separator />
-                            <MenuItem Header="隐藏桌宠" Click="HidePet_Click" />
+                            <MenuItem x:Name="MoreHideMenuItem" Header="隐藏桌宠（Ctrl+Alt+H）" Click="HidePet_Click" />
                             <MenuItem Header="退出" Click="ExitMenu_Click" />
                         </ContextMenu>
                     </Button.ContextMenu>

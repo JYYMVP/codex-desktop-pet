@@ -19,12 +19,12 @@ Official Pets companion mode is opt-in. It hides the independent pet window, ope
 
 Use the tray's **Official Pets diagnostics** report to distinguish a missing desktop process, an untrusted executable path, a Quick Chat focus timeout, and a completed safe paste. The diagnostic is read-only and cannot determine whether the host's private Pets toggle is enabled.
 
-The plugin exposes structured settings through its local `desktop-pet-settings` MCP server. Prefer the native controls on the plugin details page for official Pets mode, hotkey, periodic comments, interval, always-on-top, and Fast mode. These controls persist `%LOCALAPPDATA%/CodexDesktopPet/settings.json`; use the **Restart desktop pet** action after changing values so the running helper reloads them.
+The plugin exposes structured settings through its local `desktop-pet-settings` MCP server. Prefer the native controls on the plugin details page for standalone-pet visibility, its show/hide shortcut, official Pets mode, selection and OCR shortcuts, periodic comments, interval, always-on-top, and Fast mode. These controls persist `%LOCALAPPDATA%/CodexDesktopPet/settings.json`; use the **Restart desktop pet** action after changing values so the running helper reloads them.
 
 For setup, first check Windows, the .NET 8 runtime, `codex.exe`, and the expected executable path. Explain any missing dependency before changing the system. Build or install only when the user requested setup. After publishing the Windows project, run `${PLUGIN_ROOT}/scripts/install-pet.ps1 -SourceDirectory <publish-directory>` and verify `%LOCALAPPDATA%/CodexDesktopPet/app/CodexDesktopPet.exe`, the process, and the log. Use `uninstall-pet.ps1` when the user asks to remove the installed application files; it preserves settings and logs.
 
 For troubleshooting, inspect `%LOCALAPPDATA%\CodexDesktopPet\desktop-pet.log`, then distinguish hotkey registration, selection capture, Codex connectivity, and rendering failures. Prefer the smallest repair and retest the actual shortcut path.
 
-The plugin's structured settings include `HotKey` for selected text and `OcrHotKey` for region recognition. They must be valid, distinct Windows modifier combinations. The defaults are `Ctrl+Alt+Q` and `Ctrl+Alt+R`.
+The plugin's structured settings include `HotKey` for selected text, `OcrHotKey` for region recognition, `TogglePetHotKey` for showing or hiding the standalone pet, and `PetHidden` for its persisted visibility. The three shortcuts must be valid, distinct Windows modifier combinations. Their defaults are `Ctrl+Alt+Q`, `Ctrl+Alt+R`, and `Ctrl+Alt+H`.
 
 When the user asks about conversation memory, explain that each pet uses its own persistent Codex thread. “New pet conversation” switches to a new thread without deleting old Codex history. Screen comments use a separate ephemeral thread so they do not pollute the pet conversation.

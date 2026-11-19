@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "codex-desktop-pet",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Configure and run Windows selection shortcuts for official Pets Quick Chat or a standalone Codex desktop pet.",
   "author": {
     "name": "JYYMVP",
