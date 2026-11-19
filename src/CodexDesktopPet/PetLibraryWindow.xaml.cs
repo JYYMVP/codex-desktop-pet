@@ -67,6 +67,13 @@ public partial class PetLibraryWindow : Window
         });
     }
 
+    private void CreatePixelPet_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new PixelPetEditorWindow(_library) { Owner = this };
+        if (dialog.ShowDialog() == true && dialog.CreatedPet is { } pet)
+            RefreshList(pet.Id);
+    }
+
     private void Select_Click(object sender, RoutedEventArgs e)
     {
         if (SelectedPet is not { } pet)

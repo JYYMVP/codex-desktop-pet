@@ -148,6 +148,59 @@ internal sealed class PetLibraryService
         }
     }
 
+    public PetLibraryItem CreateStaticPet(string name, string description, int canvasSize,
+        BitmapSource bitmap)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidDataException("请给宠物起一个名字。");
+        if (canvasSize is < 8 or > 64 || bitmap.PixelWidth != canvasSize || bitmap.PixelHeight != canvasSize)
+            throw new InvalidDataException("画布必须是 8×8 到 64×64 的正方形。");
+
+        var baseId = NormalizeId(name);
+        if (string.IsNullOrWhiteSpace(baseId))
+            baseId = "pixel-pet";
+        baseId = baseId[..Math.Min(baseId.Length, 32)];
+        var id = $"{baseId}-{Guid.NewGuid():N}"[..(baseId.Length + 9)];
+        var destination = Path.Combine(LibraryRoot, id);
+        Directory.CreateDirectory(destination);
+        try
+        {
+            var framePath = Path.Combine(destination, "idle.png");
+            using (var stream = File.Create(framePath))
+            {
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                encoder.Save(stream);
+            }
+
+            var manifest = new PetManifest
+            {
+                Id = id,
+                Name = name.Trim(),
+                Description = description.Trim(),
+                CanvasSize = canvasSize,
+                FrameDurationMs = 360,
+                States = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["idle"] = ["idle.png"]
+                }
+            };
+            WriteManifest(destination, manifest);
+            var validation = Validate(destination);
+            if (!validation.IsValid)
+                throw new InvalidDataException(string.Join(Environment.NewLine, validation.Errors));
+
+            AppLog.Write($"Created pixel pet {id} on a {canvasSize}x{canvasSize} canvas");
+            return new PetLibraryItem(id, manifest.Name, manifest.Description ?? string.Empty, destination);
+        }
+        catch
+        {
+            if (Directory.Exists(destination))
+                Directory.Delete(destination, true);
+            throw;
+        }
+    }
+
     public void UpdateMetadata(PetLibraryItem item, string name, string description)
     {
         EnsureOwned(item);

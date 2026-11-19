@@ -1,0 +1,91 @@
+<Window x:Class="CodexDesktopPet.PixelPetEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:CodexDesktopPet.Controls"
+        Title="新建像素宠物" Width="980" Height="720" MinWidth="900" MinHeight="650"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResizeWithGrip"
+        Background="{StaticResource WindowBrush}" Foreground="{StaticResource TextBrush}">
+    <Grid Margin="26">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="310" />
+        </Grid.ColumnDefinitions>
+
+        <Grid Margin="0,0,26,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <StackPanel>
+                <TextBlock Text="像素宠物设计器" FontSize="24" FontWeight="SemiBold" />
+                <TextBlock Text="透明方格不会显示；单击或拖动即可绘制。" Margin="0,5,0,16"
+                           Foreground="{StaticResource MutedTextBrush}" />
+            </StackPanel>
+            <Border Grid.Row="1" Background="#111114" BorderBrush="#3B3B42" BorderThickness="1"
+                    CornerRadius="12" Padding="12">
+                <controls:PixelCanvasControl x:Name="CanvasEditor" MinWidth="460" MinHeight="460" />
+            </Border>
+            <TextBlock x:Name="EditorStatus" Grid.Row="2" Margin="0,12,0,0"
+                       Foreground="{StaticResource MutedTextBrush}" />
+        </Grid>
+
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Text="宠物资料" FontSize="17" FontWeight="SemiBold" />
+                <TextBlock Text="名称" Margin="0,14,0,5" Foreground="{StaticResource MutedTextBrush}" />
+                <TextBox x:Name="NameBox" Text="我的像素宠物" Padding="8,6" />
+                <TextBlock Text="描述" Margin="0,12,0,5" Foreground="{StaticResource MutedTextBrush}" />
+                <TextBox x:Name="DescriptionBox" Text="用内置编辑器创作的桌宠" Padding="8,6"
+                         MinHeight="58" TextWrapping="Wrap" AcceptsReturn="True" />
+
+                <TextBlock Text="画布" Margin="0,18,0,7" FontSize="17" FontWeight="SemiBold" />
+                <DockPanel>
+                    <TextBox x:Name="CanvasSizeBox" Text="32" Width="64" Padding="8,6" />
+                    <Button Content="应用尺寸" Click="ApplySize_Click" Margin="8,0,0,0" Padding="10,6" />
+                </DockPanel>
+                <TextBlock Text="8–64 像素；调整尺寸时会居中保留图案。" Margin="0,6,0,0"
+                           FontSize="11" Foreground="{StaticResource SubtleTextBrush}" TextWrapping="Wrap" />
+
+                <TextBlock Text="工具" Margin="0,18,0,7" FontSize="17" FontWeight="SemiBold" />
+                <WrapPanel>
+                    <Button Content="画笔" Tag="Pencil" Click="Tool_Click" Padding="12,6" Margin="0,0,7,7" />
+                    <Button Content="橡皮" Tag="Eraser" Click="Tool_Click" Padding="12,6" Margin="0,0,7,7" />
+                    <Button Content="填充" Tag="Fill" Click="Tool_Click" Padding="12,6" Margin="0,0,7,7" />
+                    <Button Content="清空" Click="Clear_Click" Padding="12,6" Margin="0,0,7,7"
+                            Foreground="{StaticResource DangerBrush}" />
+                </WrapPanel>
+
+                <TextBlock Text="颜色" Margin="0,12,0,7" FontSize="17" FontWeight="SemiBold" />
+                <WrapPanel>
+                    <Button Tag="#68E9FF" Background="#68E9FF" Click="Palette_Click" Width="34" Height="34" Margin="0,0,7,7" />
+                    <Button Tag="#55D88B" Background="#55D88B" Click="Palette_Click" Width="34" Height="34" Margin="0,0,7,7" />
+                    <Button Tag="#FFD166" Background="#FFD166" Click="Palette_Click" Width="34" Height="34" Margin="0,0,7,7" />
+                    <Button Tag="#FF7F91" Background="#FF7F91" Click="Palette_Click" Width="34" Height="34" Margin="0,0,7,7" />
+                    <Button Tag="#A78BFA" Background="#A78BFA" Click="Palette_Click" Width="34" Height="34" Margin="0,0,7,7" />
+                    <Button Tag="#F4F4F5" Background="#F4F4F5" Click="Palette_Click" Width="34" Height="34" Margin="0,0,7,7" />
+                    <Button Tag="#29292F" Background="#29292F" Click="Palette_Click" Width="34" Height="34" Margin="0,0,7,7" />
+                </WrapPanel>
+                <DockPanel Margin="0,3,0,0">
+                    <Border x:Name="CurrentColorSwatch" Width="34" Height="34" Background="#68E9FF"
+                            BorderBrush="#777780" BorderThickness="1" CornerRadius="4" DockPanel.Dock="Left" />
+                    <TextBox x:Name="HexColorBox" Text="#68E9FF" Width="94" Padding="7,6" Margin="8,0,0,0" />
+                    <Button Content="应用" Click="ApplyColor_Click" Padding="10,6" Margin="7,0,0,0" />
+                </DockPanel>
+
+                <TextBlock Text="预览" Margin="0,18,0,7" FontSize="17" FontWeight="SemiBold" />
+                <Border Width="132" Height="132" HorizontalAlignment="Left" Background="#18181B"
+                        BorderBrush="#3B3B42" BorderThickness="1" CornerRadius="8" Padding="2">
+                    <Image x:Name="PreviewImage" Width="128" Height="128" Stretch="Uniform"
+                           RenderOptions.BitmapScalingMode="NearestNeighbor" />
+                </Border>
+
+                <WrapPanel Margin="0,22,0,0">
+                    <Button Content="创建宠物" Click="Create_Click" Padding="16,8" Margin="0,0,8,0"
+                            Style="{StaticResource PrimaryButtonStyle}" />
+                    <Button Content="取消" Click="Cancel_Click" Padding="16,8" />
+                </WrapPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>

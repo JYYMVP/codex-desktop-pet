@@ -216,6 +216,8 @@ public partial class MainWindow : Window
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add(_settings.OfficialPetsCompanionMode ? "唤起官方 Pets" : "显示桌宠",
             null, async (_, _) => await ShowFromTrayAsync());
+        if (_settings.OfficialPetsCompanionMode)
+            menu.Items.Add("官方 Pets 诊断…", null, (_, _) => ShowOfficialPetsDiagnostics());
         if (!_settings.OfficialPetsCompanionMode)
         {
             menu.Items.Add($"OCR 框选识别（{CurrentOcrHotKey.DisplayName}）", null,
@@ -253,6 +255,14 @@ public partial class MainWindow : Window
         WindowState = WindowState.Normal;
         Topmost = false;
         Topmost = true;
+    }
+
+    private void ShowOfficialPetsDiagnostics()
+    {
+        Show();
+        WindowState = WindowState.Normal;
+        ShowMessage(_officialPets.BuildDiagnosticMarkdown(), PetState.Idle);
+        AppLog.Write("Official Pets diagnostic report displayed.");
     }
 
     private void ExitApplication()

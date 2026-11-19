@@ -147,7 +147,7 @@ Get-Process CodexDesktopPet | Select-Object Id, Path
 6. 单击桌宠收起/展开回答卡片；
 7. 在底部 Quick Chat 输入框继续追问；
 8. 从“⋯”菜单查看 Codex 套餐额度；
-9. 打开“宠物库…”验证本地宠物管理界面。
+9. 打开“宠物库…”并进入“新建像素宠物”，验证画笔、橡皮、填充、颜色、预览和创建流程。
 
 在 Codex 的插件详情页中还应能看到原生设置，包括划词快捷键、OCR 框选快捷键、官方 Pets
 增强模式、两种自动屏幕评论、置顶和 Fast mode。修改后使用详情页中的重启助手操作应用设置。
@@ -159,6 +159,9 @@ Get-Process CodexDesktopPet | Select-Object Id, Path
 3. 在其他应用中选中文字并按 `Ctrl + Alt + Q`；
 4. 确认官方 Quick Chat 获得焦点，并出现包含选区的提问草稿；
 5. 检查内容后手动按 Enter。助手不会自动发送；如果无法确认 ChatGPT/Codex 窗口已经获得焦点，也不会粘贴。
+
+若失败，从系统托盘打开“官方 Pets 诊断…”。报告会显示官方桌面进程、WindowsApps 安装路径、
+最近一次 Quick Chat 操作以及是否在焦点确认阶段停止；它不会读取或发送聊天内容。
 
 关闭窗口只会隐藏到托盘；需要从托盘菜单选择“退出”才能完全结束。
 

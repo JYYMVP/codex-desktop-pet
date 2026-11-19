@@ -48,14 +48,17 @@ export, and permanently delete local pets. To adopt a pet, choose its `pet.json`
 archive. A `.codexpet` file is a ZIP-compatible snapshot containing exactly one manifest and its
 frames; it contains no owner identity or account credentials.
 
+Choose **新建像素宠物** to draw a static pet on an 8×8 to 64×64 grid. The built-in editor provides
+a pencil, eraser, flood fill, palette, custom hexadecimal colours, transparent background, and a
+nearest-neighbour preview. It writes a valid one-frame `idle` pack directly into the local library.
+
 This local sharing format is independent from ChatGPT Work Pets. Revocable public `sharepet_`
 URLs require a hosted backend and are not simulated by the desktop application.
 
 ## Future editor format
 
-The planned editor can add a grid, palette, pencil, eraser, fill, onion skin, timeline, thumbnail,
-shared bottom-centre anchor and animation preview without changing the canonical 64×64 pixel
-canvas or the current `.codexpet` archive format.
+Future editor versions can add onion skin, a timeline, thumbnails, shared bottom-centre anchors,
+and animation previews without changing the current `.codexpet` archive format.
 
 OpenAI Work Pets is proprietary, so this project does not copy its scripts or assets. Any future
 interoperability exporter must remain a clean-room transform from this independent format.

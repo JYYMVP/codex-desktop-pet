@@ -14,6 +14,8 @@ internal sealed class OfficialPetsQuickChatService
     private const byte VkP = 0x50;
     private const byte VkLWin = 0x5B;
     private const uint KeyEventKeyUp = 0x0002;
+    private string _lastOperation = "尚未触发官方 Pets Quick Chat。";
+    private DateTimeOffset? _lastOperationAt;
 
     public async Task PrefillSelectionQuestionAsync(
         string selectedText,
@@ -31,17 +33,71 @@ internal sealed class OfficialPetsQuickChatService
         await ShowControlsAsync();
         if (!await WaitForOfficialPetsFocusAsync(originalForegroundWindow))
         {
+            RecordStatus("失败：发送快捷键后，未能在 2 秒内确认官方 Quick Chat 获得焦点。");
             throw new InvalidOperationException(
                 "无法确认官方 Pets Quick Chat 已获得焦点，因此没有粘贴选中内容。" +
                 "请确认 ChatGPT 桌面版已启用 Pets，且 Windows+Alt+P 可以正常唤起 Quick Chat。");
         }
         await PastePreservingClipboardAsync(prompt);
+        RecordStatus("成功：已确认官方 Quick Chat 焦点并填入划词问题；未自动发送。 ");
     }
 
     public async Task ShowControlsAsync()
     {
         await WaitForModifiersReleasedAsync();
         PressChord(VkLWin, VkMenu, VkP);
+        RecordStatus("已发送 Windows+Alt+P，正在等待官方 Pets Quick Chat。");
+    }
+
+    public string BuildDiagnosticMarkdown()
+    {
+        var candidates = Process.GetProcessesByName("ChatGPT");
+        var trustedPaths = new List<string>();
+        var unreadable = 0;
+        foreach (var process in candidates)
+        {
+            using (process)
+            {
+                try
+                {
+                    var path = process.MainModule?.FileName;
+                    if (!string.IsNullOrWhiteSpace(path) && IsTrustedExecutablePath(path))
+                        trustedPaths.Add(path);
+                    else
+                        unreadable++;
+                }
+                catch
+                {
+                    unreadable++;
+                }
+            }
+        }
+
+        var processStatus = candidates.Length == 0
+            ? "❌ 没有检测到 ChatGPT/Codex 桌面进程"
+            : trustedPaths.Count > 0
+                ? $"✅ 检测到 {trustedPaths.Count} 个可信 Codex 桌面进程"
+                : $"⚠️ 检测到 {candidates.Length} 个同名进程，但安装路径无法确认为官方 WindowsApps 包";
+        var lastAt = _lastOperationAt is null
+            ? string.Empty
+            : $"（{_lastOperationAt.Value.LocalDateTime:MM-dd HH:mm:ss}）";
+        var pathLine = trustedPaths.Count > 0
+            ? $"- **可信程序：** `{trustedPaths[0]}`"
+            : unreadable > 0
+                ? "- **程序路径：** 无法读取或不符合官方安装路径"
+                : "- **程序路径：** 未检测到";
+
+        return $$"""
+            ## 官方 Pets 诊断
+
+            - **桌面程序：** {{processStatus}}
+            {{pathLine}}
+            - **最近一次操作：** {{_lastOperation}}{{lastAt}}
+            - **安全策略：** 只有确认前台窗口属于官方 Codex 包后才会粘贴，并且永远不会自动按 Enter。
+
+            若进程正常但仍无法唤起，请先手动按 `Windows+Alt+P`。如果官方 Quick Chat 没有出现，
+            请在 ChatGPT/Codex 的 Pets 设置中启用一只宠物；插件无法直接读取这个内部开关。
+            """;
     }
 
     internal static string BuildSelectionPrompt(
@@ -134,19 +190,29 @@ internal sealed class OfficialPetsQuickChatService
             if (!string.Equals(process.ProcessName, "ChatGPT", StringComparison.OrdinalIgnoreCase))
                 return false;
             var executablePath = process.MainModule?.FileName;
-            if (string.IsNullOrWhiteSpace(executablePath))
-                return false;
-            var normalizedPath = Path.GetFullPath(executablePath)
-                .Replace('/', '\\');
-            return normalizedPath.EndsWith("\\app\\ChatGPT.exe",
-                       StringComparison.OrdinalIgnoreCase) &&
-                   normalizedPath.Contains("\\WindowsApps\\OpenAI.Codex_",
-                       StringComparison.OrdinalIgnoreCase);
+            return !string.IsNullOrWhiteSpace(executablePath) &&
+                   IsTrustedExecutablePath(executablePath);
         }
         catch
         {
             return false;
         }
+    }
+
+    private static bool IsTrustedExecutablePath(string executablePath)
+    {
+        var normalizedPath = Path.GetFullPath(executablePath).Replace('/', '\\');
+        return normalizedPath.EndsWith("\\app\\ChatGPT.exe",
+                   StringComparison.OrdinalIgnoreCase) &&
+               normalizedPath.Contains("\\WindowsApps\\OpenAI.Codex_",
+                   StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void RecordStatus(string status)
+    {
+        _lastOperation = status.Trim();
+        _lastOperationAt = DateTimeOffset.Now;
+        AppLog.Write($"Official Pets status: {_lastOperation}");
     }
 
     private static bool ContainsProductName(string value) =>
