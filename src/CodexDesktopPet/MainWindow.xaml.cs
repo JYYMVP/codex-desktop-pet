@@ -28,6 +28,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _screenWatchTimer = new();
     private readonly DispatcherTimer _windowWatchTimer = new();
     private readonly DispatcherTimer _commentBubbleTimer = new();
+    private readonly DispatcherTimer _interactionAnimationTimer = new();
     private GlobalHotKeyManager? _hotKey;
     private GlobalHotKeyManager? _ocrHotKey;
     private GlobalHotKeyManager? _togglePetHotKey;
@@ -56,8 +57,15 @@ public partial class MainWindow : Window
             await LookAtScreenAsync(ScreenCommentTrigger.Periodic);
         _windowWatchTimer.Interval = TimeSpan.FromMilliseconds(750);
         _windowWatchTimer.Tick += async (_, _) => await CheckForegroundWindowAsync();
-        _commentBubbleTimer.Interval = TimeSpan.FromSeconds(9);
+        _commentBubbleTimer.Interval = TimeSpan.FromSeconds(
+            Math.Clamp(_settings.CommentBubbleSeconds, 4, 60));
         _commentBubbleTimer.Tick += (_, _) => HideCommentBubble(resetPetState: true);
+        _interactionAnimationTimer.Interval = TimeSpan.FromMilliseconds(900);
+        _interactionAnimationTimer.Tick += (_, _) =>
+        {
+            _interactionAnimationTimer.Stop();
+            RestoreRestingPetState();
+        };
         _activityMonitor.StatusChanged += ActivityMonitor_StatusChanged;
         SetAnswerMarkdown(_answerMarkdown);
     }
@@ -171,6 +179,8 @@ public partial class MainWindow : Window
     private void ShowCommentBubble(string comment)
     {
         _commentBubbleTimer.Stop();
+        _commentBubbleTimer.Interval = TimeSpan.FromSeconds(
+            Math.Clamp(_settings.CommentBubbleSeconds, 4, 60));
         AnswerPanel.Visibility = Visibility.Collapsed;
         ComposerPanel.Visibility = Visibility.Collapsed;
         CommentText.Text = comment.Trim();
@@ -184,7 +194,7 @@ public partial class MainWindow : Window
         _commentBubbleTimer.Stop();
         CommentBubble.Visibility = Visibility.Collapsed;
         if (resetPetState && !_busy)
-            SetPetState(PetState.Idle);
+            RestoreRestingPetState();
     }
 
     private void SetAnswerMarkdown(string markdown)
@@ -483,6 +493,13 @@ public partial class MainWindow : Window
             ? Visibility.Collapsed
             : Visibility.Visible;
 
+    private void MoreButton_Click(object sender, RoutedEventArgs e)
+    {
+        PetContextMenu.PlacementTarget = MoreButton;
+        PetContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
+        PetContextMenu.IsOpen = true;
+    }
+
     private void HidePet_Click(object sender, RoutedEventArgs e) =>
         HideStandalonePet(persistVisibility: true);
 
@@ -490,6 +507,15 @@ public partial class MainWindow : Window
     {
         HideCommentBubble(resetPetState: true);
         e.Handled = true;
+    }
+
+    private void CommentBubble_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e) =>
+        _commentBubbleTimer.Stop();
+
+    private void CommentBubble_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (CommentBubble.Visibility == Visibility.Visible)
+            _commentBubbleTimer.Start();
     }
 
     private void ExitMenu_Click(object sender, RoutedEventArgs e) => ExitApplication();
@@ -690,9 +716,21 @@ public partial class MainWindow : Window
     {
         var automatic = trigger != ScreenCommentTrigger.Manual;
         if (_settings.OfficialPetsCompanionMode || _busy ||
+            automatic && (!IsVisible || _settings.PetHidden) ||
+            automatic && CommentBubble.Visibility == Visibility.Visible ||
+            automatic && (AnswerPanel.Visibility == Visibility.Visible ||
+                          ComposerPanel.Visibility == Visibility.Visible) ||
             trigger == ScreenCommentTrigger.Periodic && !_settings.ScreenWatchingEnabled ||
             trigger == ScreenCommentTrigger.WindowChange && !_settings.WindowChangeCommentsEnabled)
+        {
+            if (automatic)
+                AppLog.Write($"Automatic screen comment skipped. Trigger={trigger}; " +
+                             $"Visible={IsVisible}; Hidden={_settings.PetHidden}; " +
+                             $"BubbleVisible={CommentBubble.Visibility == Visibility.Visible}; " +
+                             $"AnswerVisible={AnswerPanel.Visibility == Visibility.Visible}; " +
+                             $"ComposerVisible={ComposerPanel.Visibility == Visibility.Visible}; Busy={_busy}");
             return;
+        }
 
         _busy = true;
         string? capturePath = null;
@@ -770,6 +808,14 @@ public partial class MainWindow : Window
             CodexActivityState.Blocked => PetState.Error,
             _ => PetState.Idle
         });
+    }
+
+    private void RestoreRestingPetState()
+    {
+        if (_settings.FollowCodexActivity && !_settings.OfficialPetsCompanionMode)
+            ApplyExternalActivityState();
+        else if (!_busy)
+            SetPetState(PetState.Idle);
     }
 
     private void ConfigureWindowChangeComments()
@@ -942,6 +988,12 @@ public partial class MainWindow : Window
         PetBody.ReleaseMouseCapture();
         if (_petPressPosition is not null && !_petDragged)
         {
+            if (!_busy)
+            {
+                _interactionAnimationTimer.Stop();
+                SetPetState(PetState.Waving);
+                _interactionAnimationTimer.Start();
+            }
             if (CommentBubble.Visibility == Visibility.Visible)
                 HideCommentBubble(resetPetState: true);
             else if (AnswerPanel.Visibility == Visibility.Visible)
@@ -986,6 +1038,7 @@ public partial class MainWindow : Window
         _screenWatchTimer.Stop();
         _windowWatchTimer.Stop();
         _commentBubbleTimer.Stop();
+        _interactionAnimationTimer.Stop();
         _activityMonitor.Dispose();
         _codex.Dispose();
         _petController.Dispose();

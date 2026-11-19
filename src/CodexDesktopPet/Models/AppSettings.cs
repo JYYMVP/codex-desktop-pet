@@ -25,6 +25,7 @@ internal sealed class AppSettings
     public int ScreenWatchingIntervalMinutes { get; set; } = 10;
     public bool WindowChangeCommentsEnabled { get; set; }
     public int WindowChangeCommentCooldownMinutes { get; set; } = 2;
+    public int CommentBubbleSeconds { get; set; } = 14;
     public bool FollowCodexActivity { get; set; } = true;
     public bool StayOnTop { get; set; } = true;
 
@@ -85,6 +86,7 @@ internal sealed class AppSettings
                 loaded.ScreenWatchingIntervalMinutes, 1, 240);
             loaded.WindowChangeCommentCooldownMinutes = Math.Clamp(
                 loaded.WindowChangeCommentCooldownMinutes, 1, 60);
+            loaded.CommentBubbleSeconds = Math.Clamp(loaded.CommentBubbleSeconds, 4, 60);
             loaded.Save();
             return loaded;
         }

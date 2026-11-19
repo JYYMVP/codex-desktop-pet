@@ -26,11 +26,13 @@ public partial class SettingsWindow : Window
         ScreenIntervalBox.Text = settings.ScreenWatchingIntervalMinutes.ToString();
         WindowChangeCommentsBox.IsChecked = settings.WindowChangeCommentsEnabled;
         WindowChangeCooldownBox.Text = settings.WindowChangeCommentCooldownMinutes.ToString();
+        CommentBubbleSecondsBox.Text = settings.CommentBubbleSeconds.ToString();
         ContextTurnsBox.Text = settings.ContextTurns.ToString();
         MaximumAnswerBox.Text = settings.MaximumAnswerCharacters.ToString();
         TimeoutBox.Text = settings.TimeoutSeconds.ToString();
         PetPackPathBox.Text = settings.PetPackPath;
         StayOnTopBox.IsChecked = settings.StayOnTop;
+        RefreshDependentControls(null, new RoutedEventArgs());
     }
 
     private void Save_Click(object sender, RoutedEventArgs e)
@@ -40,6 +42,7 @@ public partial class SettingsWindow : Window
             !int.TryParse(TimeoutBox.Text, out var timeout) || timeout is < 15 or > 600 ||
             !int.TryParse(ScreenIntervalBox.Text, out var screenInterval) || screenInterval is < 1 or > 240 ||
             !int.TryParse(WindowChangeCooldownBox.Text, out var windowCooldown) || windowCooldown is < 1 or > 60 ||
+            !int.TryParse(CommentBubbleSecondsBox.Text, out var commentSeconds) || commentSeconds is < 4 or > 60 ||
             string.IsNullOrWhiteSpace(CodexExecutableBox.Text) ||
             string.IsNullOrWhiteSpace(LanguageBox.Text) ||
             ReasoningEffortBox.SelectedValue is not string reasoning)
@@ -89,6 +92,7 @@ public partial class SettingsWindow : Window
         _settings.ScreenWatchingIntervalMinutes = screenInterval;
         _settings.WindowChangeCommentsEnabled = WindowChangeCommentsBox.IsChecked == true;
         _settings.WindowChangeCommentCooldownMinutes = windowCooldown;
+        _settings.CommentBubbleSeconds = commentSeconds;
         _settings.ContextTurns = turns;
         _settings.MaximumAnswerCharacters = answerLength;
         _settings.TimeoutSeconds = timeout;
@@ -99,6 +103,18 @@ public partial class SettingsWindow : Window
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e) => DialogResult = false;
+
+    private void RefreshDependentControls(object? sender, RoutedEventArgs e)
+    {
+        var standalone = OfficialPetsModeBox.IsChecked != true;
+        FollowCodexActivityBox.IsEnabled = standalone;
+        ScreenWatchingBox.IsEnabled = standalone;
+        WindowChangeCommentsBox.IsEnabled = standalone;
+        ScreenIntervalBox.IsEnabled = standalone && ScreenWatchingBox.IsChecked == true;
+        WindowChangeCooldownBox.IsEnabled = standalone &&
+                                                   WindowChangeCommentsBox.IsChecked == true;
+        CommentBubbleSecondsBox.IsEnabled = standalone;
+    }
 
     private void HotKeyBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         => CaptureHotKey(e, HotKeyBox);

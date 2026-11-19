@@ -8,7 +8,7 @@
         Loaded="Window_Loaded" Closing="Window_Closing" Closed="Window_Closed">
     <Grid>
         <!-- 问答卡片与碎碎念气泡互相独立，避免两种内容混在一起。 -->
-        <Border x:Name="AnswerPanel" Margin="16,10,16,174" Padding="16,14"
+        <Border x:Name="AnswerPanel" Margin="16,10,16,164" Padding="16,14"
                 MinHeight="104" MaxHeight="226" VerticalAlignment="Bottom"
                 CornerRadius="18" Background="#FCFFFFFF"
                 BorderBrush="#1F000000" BorderThickness="1" Visibility="Collapsed">
@@ -46,8 +46,9 @@
         </Border>
 
         <Grid x:Name="CommentBubble" HorizontalAlignment="Center" VerticalAlignment="Bottom"
-              Margin="38,0,38,174" MaxWidth="294" Visibility="Collapsed"
-              Cursor="Hand" MouseLeftButtonDown="CommentBubble_MouseLeftButtonDown">
+              Margin="38,0,38,164" MaxWidth="294" Visibility="Collapsed"
+              Cursor="Hand" MouseLeftButtonDown="CommentBubble_MouseLeftButtonDown"
+              MouseEnter="CommentBubble_MouseEnter" MouseLeave="CommentBubble_MouseLeave">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="8" />
@@ -67,14 +68,14 @@
 
         <!-- 官方 Pets 风格：宠物本体保持轻量，操作收进下方胶囊。 -->
         <Grid x:Name="PetBody" Width="104" Height="104"
-              HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,62"
+              HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,52"
               RenderTransformOrigin="0.5,0.5" Cursor="Hand"
               ToolTip="单击：快速提问&#x0a;拖动：移动桌宠&#x0a;显示/隐藏：Ctrl+Alt+H"
               MouseLeftButtonDown="PetBody_MouseLeftButtonDown"
               MouseLeftButtonUp="PetBody_MouseLeftButtonUp"
               MouseMove="PetBody_MouseMove">
             <Grid.ContextMenu>
-                <ContextMenu>
+                <ContextMenu x:Name="PetContextMenu">
                     <MenuItem Header="直接提问" Click="FocusQuestion_Click" />
                     <MenuItem x:Name="PetOcrMenuItem" Header="OCR 框选识别（Ctrl+Alt+R）" Click="OcrRegion_Click" />
                     <MenuItem Header="查看 Codex 套餐额度" Click="ShowUsage_Click" />
@@ -106,14 +107,14 @@
         </Grid>
 
         <Border x:Name="StatusChip" HorizontalAlignment="Center" VerticalAlignment="Bottom"
-                Margin="0,0,0,111" Padding="10,5" CornerRadius="11"
+                Margin="0,0,0,101" Padding="10,5" CornerRadius="11"
                 Background="#EFFFFFFF" BorderBrush="#18000000" BorderThickness="1"
                 Visibility="Collapsed" IsHitTestVisible="False">
             <TextBlock x:Name="StatusText" Text="工作中…" FontSize="10.5"
                        Foreground="#FF555555" TextAlignment="Center" />
         </Border>
 
-        <Border x:Name="ComposerPanel" Margin="22,0,22,70" Padding="7"
+        <Border x:Name="ComposerPanel" Margin="22,0,22,59" Padding="7"
                 VerticalAlignment="Bottom" CornerRadius="18" Background="#FCFFFFFF"
                 BorderBrush="#24000000" BorderThickness="1" Visibility="Collapsed">
             <Border.Effect>
@@ -138,34 +139,43 @@
             </Grid>
         </Border>
 
-        <Border x:Name="ActionDock" Width="112" Height="44" Margin="0,0,0,16"
+        <Border x:Name="ActionDock" Width="102" Height="36" Margin="0,0,0,14"
                 HorizontalAlignment="Center" VerticalAlignment="Bottom"
-                Background="#FCFFFFFF" BorderBrush="#20000000" BorderThickness="1"
-                CornerRadius="22">
+                Background="#EFF5F8FF" BorderBrush="#A8FFFFFF" BorderThickness="1"
+                CornerRadius="18">
             <Border.Effect>
-                <DropShadowEffect Color="#52000000" BlurRadius="18" ShadowDepth="5" Opacity="0.34" />
+                <DropShadowEffect Color="#4A233A60" BlurRadius="14" ShadowDepth="3" Opacity="0.28" />
             </Border.Effect>
-            <Grid Margin="7,5">
+            <Grid Margin="5,3">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="32" />
+                    <ColumnDefinition Width="32" />
                     <ColumnDefinition Width="1" />
-                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="27" />
                 </Grid.ColumnDefinitions>
                 <Button Click="FocusQuestion_Click" Padding="0" Background="Transparent"
                         BorderBrush="Transparent" ToolTip="快速提问">
                     <TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE70F;"
-                               FontSize="16" Foreground="#FF4B4B4B" />
+                               FontSize="15" Foreground="#FF344054" />
                 </Button>
-                <Border Grid.Column="1" Width="1" Margin="0,5" Background="#18000000" />
-                <Button Grid.Column="2" Click="LookAtScreen_Click" Padding="0"
+                <Button Grid.Column="1" Click="LookAtScreen_Click" Padding="0"
                         Background="Transparent" BorderBrush="Transparent" ToolTip="看屏幕并吐槽">
-                    <Grid Width="20" Height="18" VerticalAlignment="Center">
-                        <Border Width="2" Height="7" CornerRadius="1" Background="#FF4B4B4B" HorizontalAlignment="Left" Margin="2,0,0,0" />
-                        <Border Width="2" Height="13" CornerRadius="1" Background="#FF4B4B4B" HorizontalAlignment="Left" Margin="7,0,0,0" />
-                        <Border Width="2" Height="17" CornerRadius="1" Background="#FF4B4B4B" HorizontalAlignment="Center" />
-                        <Border Width="2" Height="11" CornerRadius="1" Background="#FF4B4B4B" HorizontalAlignment="Right" Margin="0,0,7,0" />
-                        <Border Width="2" Height="6" CornerRadius="1" Background="#FF4B4B4B" HorizontalAlignment="Right" Margin="0,0,2,0" />
+                    <Grid Width="18" Height="16" VerticalAlignment="Center">
+                        <Border Width="1" Height="6" CornerRadius="0.5" Background="#FF344054" HorizontalAlignment="Left" Margin="2,0,0,0" />
+                        <Border Width="1" Height="11" CornerRadius="0.5" Background="#FF344054" HorizontalAlignment="Left" Margin="6,0,0,0" />
+                        <Border Width="1" Height="15" CornerRadius="0.5" Background="#FF344054" HorizontalAlignment="Center" />
+                        <Border Width="1" Height="10" CornerRadius="0.5" Background="#FF344054" HorizontalAlignment="Right" Margin="0,0,6,0" />
+                        <Border Width="1" Height="5" CornerRadius="0.5" Background="#FF344054" HorizontalAlignment="Right" Margin="0,0,2,0" />
                     </Grid>
+                </Button>
+                <Border Grid.Column="2" Width="1" Margin="0,5" Background="#24344054" />
+                <Button x:Name="MoreButton" Grid.Column="3" Click="MoreButton_Click"
+                        Padding="0" Background="Transparent" BorderBrush="Transparent"
+                        ToolTip="更多功能">
+                    <Path Data="M 2,4 L 6,8 L 10,4" Width="10" Height="8"
+                          Stretch="Fill" Stroke="#FF344054" StrokeThickness="1.4"
+                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                          StrokeLineJoin="Round" Fill="Transparent" />
                 </Button>
             </Grid>
         </Border>

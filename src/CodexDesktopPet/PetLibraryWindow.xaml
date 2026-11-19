@@ -46,6 +46,9 @@
             <Button Content="新建像素宠物" Click="CreatePixelPet_Click" Padding="12,6" Margin="0,0,7,0"
                     Style="{StaticResource PrimaryButtonStyle}" />
             <Button Content="导入 / 领养" Click="Import_Click" Padding="12,6" Margin="0,0,7,0" />
+            <Button Content="导入 ChatGPT 精灵表" Click="ImportChatGptSpriteSheet_Click"
+                    Padding="12,6" Margin="0,0,7,0"
+                    ToolTip="支持 ChatGPT Pets v1/v2 的透明 PNG；请只导入你有权使用的素材" />
             <Button Content="选用" Click="Select_Click" Padding="12,6" Margin="0,0,7,0" />
             <Button Content="保存资料" Click="SaveMetadata_Click" Padding="12,6" Margin="0,0,7,0" />
             <Button Content="校验" Click="Validate_Click" Padding="12,6" Margin="0,0,7,0" />

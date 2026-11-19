@@ -7,5 +7,15 @@ internal enum PetState
     Thinking,
     Ready,
     NeedsInput,
-    Error
+    Error,
+    RunningRight,
+    RunningLeft,
+    Waving,
+    Jumping,
+    Failed,
+    Waiting,
+    Running,
+    Review,
+    LookFirstHalf,
+    LookSecondHalf
 }

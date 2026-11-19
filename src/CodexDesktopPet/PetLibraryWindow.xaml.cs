@@ -74,6 +74,26 @@ public partial class PetLibraryWindow : Window
             RefreshList(pet.Id);
     }
 
+    private void ImportChatGptSpriteSheet_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "选择 ChatGPT Pets v1/v2 精灵表",
+            Filter = "宠物精灵表 (*.png;*.webp)|*.png;*.webp|所有文件 (*.*)|*.*"
+        };
+        if (dialog.ShowDialog(this) != true)
+            return;
+        TryAction(() =>
+        {
+            var imported = _library.ImportChatGptSpriteSheet(dialog.FileName);
+            RefreshList(imported.Id);
+            MessageBox.Show(this,
+                $"已导入“{imported.Name}”。\n\n待机、工作、等待输入、失败和检查动画已自动映射。" +
+                "请只导入和导出你有权使用的角色素材。",
+                "ChatGPT 精灵表", MessageBoxButton.OK, MessageBoxImage.Information);
+        });
+    }
+
     private void Select_Click(object sender, RoutedEventArgs e)
     {
         if (SelectedPet is not { } pet)

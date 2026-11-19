@@ -28,6 +28,8 @@ For troubleshooting, inspect `%LOCALAPPDATA%\CodexDesktopPet\desktop-pet.log`, t
 
 The plugin's structured settings include `HotKey` for selected text, `OcrHotKey` for region recognition, `TogglePetHotKey` for showing or hiding the standalone pet, and `PetHidden` for its persisted visibility. The three shortcuts must be valid, distinct Windows modifier combinations. Their defaults are `Ctrl+Alt+Q`, `Ctrl+Alt+R`, and `Ctrl+Alt+H`.
 
+The local pet library can clean-room import an existing ChatGPT Pets v1 or v2 sprite sheet from PNG or a Windows-decodable WebP. Validate its documented dimensions, required cells, transparent unused cells, and alpha background before extracting frames. Never download or redistribute built-in artwork on the user's behalf unless the user has separately established permission; importing a local file does not grant redistribution rights.
+
 `FollowCodexActivity` enables official-style activity mirroring for the standalone pet. Updating these hooks changes their trust hash, so tell the user to review and trust the plugin hooks again in **Settings → Hooks**. If they decline, direct questions, OCR, and screen comments still work, but activity from other Codex chats will not animate the pet.
 
 When the user asks about conversation memory, explain that each pet uses its own persistent Codex thread. “New pet conversation” switches to a new thread without deleting old Codex history. Screen comments use a separate ephemeral thread so they do not pollute the pet conversation.

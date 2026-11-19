@@ -65,7 +65,9 @@ internal sealed class CodexAppServerService(AppSettings settings) : IDisposable
             用户名和当前 Codex 对话都可以正常概括，不要仅因为画面里有文字或聊天界面就拒绝。
             不要逐字复述密钥、访问令牌、密码、验证码、支付信息、证件号码或详细家庭住址等
             高风险秘密。只有画面主体确实是这类高风险秘密、又无法安全概括时，才说
-            “这里可能有隐私信息”；其他情况请正常吐槽。
+            “这里可能有隐私信息”；其他情况请正常吐槽。即使画面包含微信、聊天文字、用户名、
+            Codex 对话或浏览器页面，也必须在不复述敏感值的前提下正常概括，不要把普通文字误判
+            为隐私风险。只输出一句话，尽量不超过 60 个汉字，不要加“思考吐槽”等标题。
             {{(triggeredByWindowChange ? "用户刚切换到一个新的前台窗口或页面，请自然地把它当作刚看到的新场景。" : string.Empty)}}
             """, imagePath, ephemeral: true, cancellationToken);
 
@@ -240,7 +242,7 @@ internal sealed class CodexAppServerService(AppSettings settings) : IDisposable
             method = "initialize",
             @params = new
             {
-                clientInfo = new { name = "codex-desktop-pet", version = "0.7.0" }
+                clientInfo = new { name = "codex-desktop-pet", version = "0.8.0" }
             }
         }, cancellationToken);
         await WaitForResponseAsync(initializeId, cancellationToken);

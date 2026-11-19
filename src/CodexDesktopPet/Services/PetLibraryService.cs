@@ -9,6 +9,11 @@ namespace CodexDesktopPet.Services;
 
 internal sealed class PetLibraryService
 {
+    private const int ChatGptCellWidth = 192;
+    private const int ChatGptCellHeight = 208;
+    private const int ChatGptColumns = 8;
+    private const long MaximumChatGptSheetBytes = 20L * 1024 * 1024;
+    private static readonly int[] ChatGptRequiredFrames = [6, 8, 8, 4, 5, 8, 6, 6, 6, 8, 8];
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -59,8 +64,8 @@ internal sealed class PetLibraryService
             var manifestPath = ResolveManifestPath(configuredPath);
             var root = Path.GetDirectoryName(manifestPath)!;
             var manifest = ReadManifest(manifestPath);
-            if (manifest.CanvasSize is < 1 or > 64)
-                errors.Add("canvasSize 必须在 1 到 64 之间。");
+            if (manifest.CanvasSize is < 1 or > ChatGptCellHeight)
+                errors.Add($"canvasSize 必须在 1 到 {ChatGptCellHeight} 之间。");
             if (!manifest.States.Any(pair =>
                     pair.Key.Equals("idle", StringComparison.OrdinalIgnoreCase) && pair.Value.Length > 0))
                 errors.Add("至少需要一个 idle 动画帧。");
@@ -74,7 +79,7 @@ internal sealed class PetLibraryService
                 }
 
                 foreach (var relative in files)
-                    ValidateFrame(root, relative, errors);
+                    ValidateFrame(root, relative, manifest.CanvasSize, errors);
             }
         }
         catch (Exception ex)
@@ -148,6 +153,131 @@ internal sealed class PetLibraryService
         }
     }
 
+    public PetLibraryItem ImportChatGptSpriteSheet(string sourcePath)
+    {
+        var source = Path.GetFullPath(sourcePath);
+        if (!File.Exists(source))
+            throw new FileNotFoundException("没有找到 ChatGPT 宠物精灵表。", source);
+        var fileInfo = new FileInfo(source);
+        if (fileInfo.Length is < 1 or > MaximumChatGptSheetBytes)
+            throw new InvalidDataException("精灵表必须在 1 字节到 20 MiB 之间。");
+
+        BitmapSource sheet;
+        try
+        {
+            using var stream = File.OpenRead(source);
+            var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat,
+                BitmapCacheOption.OnLoad);
+            sheet = decoder.Frames[0];
+            sheet.Freeze();
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidDataException("无法读取精灵表；如果是 WebP，请先转换为透明 PNG。", ex);
+        }
+
+        var rowCount = sheet.PixelHeight switch
+        {
+            1872 => 9,
+            2288 => 11,
+            _ => 0
+        };
+        if (sheet.PixelWidth != ChatGptCellWidth * ChatGptColumns || rowCount == 0)
+            throw new InvalidDataException(
+                "ChatGPT 宠物精灵表必须是 1536×1872（v1）或 1536×2288（v2）。");
+
+        var converted = new FormatConvertedBitmap(sheet, PixelFormats.Bgra32, null, 0);
+        converted.Freeze();
+        ValidateChatGptCells(converted, rowCount);
+
+        var sourceName = Path.GetFileNameWithoutExtension(source).Trim();
+        if (string.IsNullOrWhiteSpace(sourceName))
+            sourceName = "ChatGPT Pet";
+        var baseId = NormalizeId(sourceName);
+        if (string.IsNullOrWhiteSpace(baseId))
+            baseId = "chatgpt-pet";
+        baseId = baseId[..Math.Min(baseId.Length, 28)];
+        var id = $"{baseId}-{Guid.NewGuid():N}"[..(baseId.Length + 9)];
+        var destination = Path.Combine(LibraryRoot, id);
+        Directory.CreateDirectory(destination);
+
+        try
+        {
+            var rowFiles = new Dictionary<int, string[]>();
+            for (var row = 0; row < rowCount; row++)
+            {
+                var frameCount = ChatGptRequiredFrames[row];
+                var files = new string[frameCount];
+                for (var frame = 0; frame < frameCount; frame++)
+                {
+                    var relative = $"row-{row:D2}-frame-{frame:D2}.png";
+                    var crop = new CroppedBitmap(converted,
+                        new System.Windows.Int32Rect(frame * ChatGptCellWidth,
+                            row * ChatGptCellHeight, ChatGptCellWidth, ChatGptCellHeight));
+                    crop.Freeze();
+                    using var output = File.Create(Path.Combine(destination, relative));
+                    var encoder = new PngBitmapEncoder();
+                    encoder.Frames.Add(BitmapFrame.Create(crop));
+                    encoder.Save(output);
+                    files[frame] = relative;
+                }
+                rowFiles[row] = files;
+            }
+
+            var states = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["idle"] = rowFiles[0],
+                ["runningRight"] = rowFiles[1],
+                ["runningLeft"] = rowFiles[2],
+                ["waving"] = rowFiles[3],
+                ["jumping"] = rowFiles[4],
+                ["failed"] = rowFiles[5],
+                ["waiting"] = rowFiles[6],
+                ["running"] = rowFiles[7],
+                ["review"] = rowFiles[8],
+                ["capturing"] = rowFiles[8],
+                ["thinking"] = rowFiles[7],
+                ["ready"] = rowFiles[8],
+                ["needsInput"] = rowFiles[6],
+                ["error"] = rowFiles[5]
+            };
+            if (rowCount == 11)
+            {
+                states["lookFirstHalf"] = rowFiles[9];
+                states["lookSecondHalf"] = rowFiles[10];
+            }
+
+            var manifest = new PetManifest
+            {
+                Id = id,
+                Name = sourceName,
+                Description = rowCount == 11
+                    ? "从 ChatGPT Pets v2 精灵表导入的本地宠物"
+                    : "从 ChatGPT Pets v1 精灵表导入的本地宠物",
+                CanvasSize = ChatGptCellHeight,
+                FrameDurationMs = 150,
+                PixelArt = false,
+                SourceFormat = rowCount == 11 ? "chatgpt-pets-v2" : "chatgpt-pets-v1",
+                States = states
+            };
+            WriteManifest(destination, manifest);
+            var validation = Validate(destination);
+            if (!validation.IsValid)
+                throw new InvalidDataException(string.Join(Environment.NewLine, validation.Errors));
+
+            AppLog.Write($"Imported ChatGPT Pets sprite sheet. Id={id}; Rows={rowCount}; " +
+                         $"Source={source}");
+            return new PetLibraryItem(id, manifest.Name, manifest.Description ?? string.Empty,
+                destination);
+        }
+        catch
+        {
+            if (Directory.Exists(destination))
+                Directory.Delete(destination, true);
+            throw;
+        }
+    }
+
     public PetLibraryItem CreateStaticPet(string name, string description, int canvasSize,
         BitmapSource bitmap)
     {
@@ -180,6 +310,8 @@ internal sealed class PetLibraryService
                 Description = description.Trim(),
                 CanvasSize = canvasSize,
                 FrameDurationMs = 360,
+                PixelArt = true,
+                SourceFormat = "codex-pixel-pet-v1",
                 States = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
                 {
                     ["idle"] = ["idle.png"]
@@ -258,7 +390,8 @@ internal sealed class PetLibraryService
     private static void WriteManifest(string root, PetManifest manifest) =>
         File.WriteAllText(Path.Combine(root, "pet.json"), JsonSerializer.Serialize(manifest, JsonOptions));
 
-    private static void ValidateFrame(string root, string relative, ICollection<string> errors)
+    private static void ValidateFrame(string root, string relative, int maximumSize,
+        ICollection<string> errors)
     {
         try
         {
@@ -284,8 +417,9 @@ internal sealed class PetLibraryService
             var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat,
                 BitmapCacheOption.OnLoad);
             var bitmap = decoder.Frames[0];
-            if (bitmap.PixelWidth is < 1 or > 64 || bitmap.PixelHeight is < 1 or > 64)
-                errors.Add($"帧 {relative} 必须在 1×1 到 64×64 像素之间。");
+            if (bitmap.PixelWidth < 1 || bitmap.PixelWidth > maximumSize ||
+                bitmap.PixelHeight < 1 || bitmap.PixelHeight > maximumSize)
+                errors.Add($"帧 {relative} 必须在 1×1 到 {maximumSize}×{maximumSize} 像素之间。");
 
             var converted = new FormatConvertedBitmap(bitmap, PixelFormats.Bgra32, null, 0);
             var stride = converted.PixelWidth * 4;
@@ -299,6 +433,42 @@ internal sealed class PetLibraryService
         {
             errors.Add($"无法读取帧 {relative}：{ex.Message}");
         }
+    }
+
+    private static void ValidateChatGptCells(BitmapSource bitmap, int rowCount)
+    {
+        var stride = bitmap.PixelWidth * 4;
+        var pixels = new byte[stride * bitmap.PixelHeight];
+        bitmap.CopyPixels(pixels, stride, 0);
+        var errors = new List<string>();
+
+        for (var row = 0; row < rowCount; row++)
+        for (var frame = 0; frame < ChatGptColumns; frame++)
+        {
+            var required = frame < ChatGptRequiredFrames[row];
+            var hasArtwork = false;
+            var hasTransparency = false;
+            var startX = frame * ChatGptCellWidth;
+            var startY = row * ChatGptCellHeight;
+            for (var y = startY; y < startY + ChatGptCellHeight; y++)
+            for (var x = startX; x < startX + ChatGptCellWidth; x++)
+            {
+                var alpha = pixels[y * stride + x * 4 + 3];
+                hasArtwork |= alpha > 0;
+                hasTransparency |= alpha < 255;
+            }
+
+            if (required && !hasArtwork)
+                errors.Add($"第 {row + 1} 行第 {frame + 1} 帧缺少图像。");
+            else if (required && !hasTransparency)
+                errors.Add($"第 {row + 1} 行第 {frame + 1} 帧没有透明背景。");
+            else if (!required && hasArtwork)
+                errors.Add($"第 {row + 1} 行第 {frame + 1} 个未使用单元格必须完全透明。");
+        }
+
+        if (errors.Count > 0)
+            throw new InvalidDataException(string.Join(Environment.NewLine, errors.Take(12)) +
+                (errors.Count > 12 ? $"{Environment.NewLine}另有 {errors.Count - 12} 项错误。" : string.Empty));
     }
 
     private static void ExtractArchiveSafely(string archivePath, string destination)
@@ -365,6 +535,8 @@ internal sealed class PetLibraryService
         public string? Description { get; set; }
         public int CanvasSize { get; set; } = 64;
         public int FrameDurationMs { get; set; } = 360;
+        public bool PixelArt { get; set; } = true;
+        public string SourceFormat { get; set; } = "codex-pixel-pet-v1";
         public Dictionary<string, string[]> States { get; set; } =
             new(StringComparer.OrdinalIgnoreCase);
     }

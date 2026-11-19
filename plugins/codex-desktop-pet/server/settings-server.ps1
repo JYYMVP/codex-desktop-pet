@@ -29,6 +29,7 @@ $defaults = [ordered]@{
     ScreenWatchingIntervalMinutes = 10
     WindowChangeCommentsEnabled = $false
     WindowChangeCommentCooldownMinutes = 2
+    CommentBubbleSeconds = 14
     FollowCodexActivity = $true
     StayOnTop = $true
     UseFastMode = $false
@@ -98,8 +99,8 @@ function Get-SettingsSchema {
         properties = [ordered]@{
             OfficialPetsCompanionMode = [ordered]@{
                 type = "boolean"
-                title = "Use official Pets Quick Chat"
-                description = "Hide the standalone pet window and fill selected-text questions into official Pets for review before sending."
+                title = "Experimental official Pets mode (paused)"
+                description = "Compatibility mode retained for testing; standalone pet development is currently prioritized."
             }
             PetHidden = [ordered]@{
                 type = "boolean"
@@ -154,6 +155,13 @@ function Get-SettingsSchema {
                 minimum = 1
                 maximum = 60
             }
+            CommentBubbleSeconds = [ordered]@{
+                type = "integer"
+                title = "Comment bubble duration (seconds)"
+                description = "How long a screen comment remains visible before it closes automatically."
+                minimum = 4
+                maximum = 60
+            }
             FollowCodexActivity = [ordered]@{
                 type = "boolean"
                 title = "Follow Codex activity"
@@ -179,6 +187,7 @@ function Get-SettingsSchema {
             "ScreenWatchingIntervalMinutes",
             "WindowChangeCommentsEnabled",
             "WindowChangeCommentCooldownMinutes",
+            "CommentBubbleSeconds",
             "FollowCodexActivity",
             "StayOnTop",
             "UseFastMode"
@@ -214,7 +223,8 @@ function Get-SettingsLayout {
                 [ordered]@{ kind = "property"; property = "ScreenWatchingEnabled" },
                 [ordered]@{ kind = "property"; property = "ScreenWatchingIntervalMinutes" },
                 [ordered]@{ kind = "property"; property = "WindowChangeCommentsEnabled" },
-                [ordered]@{ kind = "property"; property = "WindowChangeCommentCooldownMinutes" }
+                [ordered]@{ kind = "property"; property = "WindowChangeCommentCooldownMinutes" },
+                [ordered]@{ kind = "property"; property = "CommentBubbleSeconds" }
             )
         },
         [ordered]@{
@@ -322,6 +332,10 @@ function Convert-SettingUpdates([object]$SetObject) {
             "WindowChangeCommentCooldownMinutes" {
                 $updates[$property.Name] = Convert-StrictInteger `
                     $property.Value $property.Name 1 60
+            }
+            "CommentBubbleSeconds" {
+                $updates[$property.Name] = Convert-StrictInteger `
+                    $property.Value $property.Name 4 60
             }
         }
     }
@@ -453,7 +467,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     _meta = [ordered]@{
                         "io.modelcontextprotocol/serverInfo" = [ordered]@{
                             name = "codex-desktop-pet-settings"
-                            version = "0.7.0"
+                            version = "0.8.0"
                         }
                     }
                     capabilities = [ordered]@{
@@ -470,7 +484,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     protocolVersion = $protocolVersion
                     serverInfo = [ordered]@{
                         name = "codex-desktop-pet-settings"
-                        version = "0.7.0"
+                        version = "0.8.0"
                     }
                     capabilities = [ordered]@{
                         tools = [ordered]@{ listChanged = $false }

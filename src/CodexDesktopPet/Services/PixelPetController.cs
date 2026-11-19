@@ -32,7 +32,10 @@ internal sealed class PixelPetController : IDisposable
             var useBuiltInPet = string.IsNullOrWhiteSpace(packPath);
             _frames = useBuiltInPet ? CreateBuiltInFrames() : LoadPack(packPath);
             if (useBuiltInPet)
+            {
                 _timer.Interval = TimeSpan.FromMilliseconds(240);
+                RenderOptions.SetBitmapScalingMode(_image, BitmapScalingMode.NearestNeighbor);
+            }
             AppLog.Write(string.IsNullOrWhiteSpace(packPath)
                 ? "Loaded built-in 64x64 pixel pet."
                 : $"Loaded pixel pet pack: {Path.GetFullPath(packPath)}");
@@ -78,8 +81,11 @@ internal sealed class PixelPetController : IDisposable
                            File.ReadAllText(manifestPath),
                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                        ?? throw new InvalidDataException("pet.json 内容无效。");
-        if (manifest.CanvasSize is < 1 or > 64)
-            throw new InvalidDataException("CanvasSize 必须在 1 到 64 之间。");
+        if (manifest.CanvasSize is < 1 or > 208)
+            throw new InvalidDataException("CanvasSize 必须在 1 到 208 之间。");
+        RenderOptions.SetBitmapScalingMode(_image, manifest.PixelArt
+            ? BitmapScalingMode.NearestNeighbor
+            : BitmapScalingMode.HighQuality);
 
         _timer.Interval = TimeSpan.FromMilliseconds(Math.Clamp(manifest.FrameDurationMs, 80, 2000));
         var result = new Dictionary<PetState, List<ImageSource>>();
@@ -106,8 +112,9 @@ internal sealed class PixelPetController : IDisposable
                 bitmap.StreamSource = stream;
                 bitmap.EndInit();
                 bitmap.Freeze();
-                if (bitmap.PixelWidth > 64 || bitmap.PixelHeight > 64)
-                    throw new InvalidDataException($"帧 {relative} 超过 64×64 像素。");
+                if (bitmap.PixelWidth > manifest.CanvasSize || bitmap.PixelHeight > manifest.CanvasSize)
+                    throw new InvalidDataException(
+                        $"帧 {relative} 超过 {manifest.CanvasSize}×{manifest.CanvasSize} 像素。");
                 loaded.Add(bitmap);
             }
             result[state] = loaded;
@@ -391,6 +398,7 @@ internal sealed class PixelPetController : IDisposable
     {
         public int CanvasSize { get; init; } = 64;
         public int FrameDurationMs { get; init; } = 360;
+        public bool PixelArt { get; init; } = true;
         public Dictionary<string, string[]> States { get; init; } =
             new(StringComparer.OrdinalIgnoreCase);
     }
