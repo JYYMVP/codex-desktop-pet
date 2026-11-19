@@ -11,10 +11,13 @@ The plugin currently contains:
 - deterministic install and uninstall scripts for the published Windows files;
 - design contracts for local pixel pets and persistent per-pet conversation context;
 - the Codex-style Quick Chat surface, optional screen comments, and local pet library from `main`.
+- an opt-in official Pets companion mode that hides the duplicate pet window and fills selected text into the official Pets Quick Chat for confirmation.
+- an explicit OCR region shortcut that freezes the desktop, crops only the dragged region, asks Codex to recognize it, and deletes the temporary captures.
+- native structured settings for both global shortcuts and the helper's privacy-sensitive automatic features.
 
 The plugin does not bundle a runtime-specific Windows payload. Its setup flow accepts a published directory, installs it under `%LOCALAPPDATA%\CodexDesktopPet\app`, and keeps settings and logs outside that removable application directory. The next packaging milestone is attaching a signed release payload so end users do not need a local .NET build.
 
-The official OpenAI Work Pets package is not a dependency. Its installed manifest declares a proprietary license, so this branch uses an independent implementation.
+The official OpenAI Pets package is not copied or bundled. Companion mode only uses the documented `Windows+Alt+P` Quick Chat shortcut and ordinary clipboard paste, while keeping the final send action under user control.
 
 For a complete Windows installation, verification, known-hook-limitations, and removal walkthrough, see
 [`docs/plugin-installation.md`](docs/plugin-installation.md).

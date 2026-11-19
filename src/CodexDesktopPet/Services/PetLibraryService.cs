@@ -25,7 +25,7 @@ internal sealed class PetLibraryService
     {
         var result = new List<PetLibraryItem>
         {
-            new("default", "像素鱼", "Codex Desktop Pet 内置桌宠", string.Empty, true)
+            new("default", "发芽小精灵", "Codex Desktop Pet 内置桌宠", string.Empty, true)
         };
 
         foreach (var directory in Directory.EnumerateDirectories(LibraryRoot))

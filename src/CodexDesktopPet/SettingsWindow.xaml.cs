@@ -15,10 +15,14 @@ public partial class SettingsWindow : Window
         CodexExecutableBox.Text = settings.CodexExecutable;
         LanguageBox.Text = settings.Language;
         HotKeyBox.Text = HotKeyGesture.ParseOrDefault(settings.HotKey).DisplayName;
+        OcrHotKeyBox.Text = HotKeyGesture.ParseOrDefault(settings.OcrHotKey).DisplayName;
         ReasoningEffortBox.SelectedValue = settings.ReasoningEffort;
         FastModeBox.IsChecked = settings.UseFastMode;
+        OfficialPetsModeBox.IsChecked = settings.OfficialPetsCompanionMode;
         ScreenWatchingBox.IsChecked = settings.ScreenWatchingEnabled;
         ScreenIntervalBox.Text = settings.ScreenWatchingIntervalMinutes.ToString();
+        WindowChangeCommentsBox.IsChecked = settings.WindowChangeCommentsEnabled;
+        WindowChangeCooldownBox.Text = settings.WindowChangeCommentCooldownMinutes.ToString();
         ContextTurnsBox.Text = settings.ContextTurns.ToString();
         MaximumAnswerBox.Text = settings.MaximumAnswerCharacters.ToString();
         TimeoutBox.Text = settings.TimeoutSeconds.ToString();
@@ -32,6 +36,7 @@ public partial class SettingsWindow : Window
             !int.TryParse(MaximumAnswerBox.Text, out var answerLength) || answerLength is < 100 or > 6000 ||
             !int.TryParse(TimeoutBox.Text, out var timeout) || timeout is < 15 or > 600 ||
             !int.TryParse(ScreenIntervalBox.Text, out var screenInterval) || screenInterval is < 1 or > 240 ||
+            !int.TryParse(WindowChangeCooldownBox.Text, out var windowCooldown) || windowCooldown is < 1 or > 60 ||
             string.IsNullOrWhiteSpace(CodexExecutableBox.Text) ||
             string.IsNullOrWhiteSpace(LanguageBox.Text) ||
             ReasoningEffortBox.SelectedValue is not string reasoning)
@@ -46,13 +51,29 @@ public partial class SettingsWindow : Window
             return;
         }
 
+        if (!HotKeyGesture.TryParse(OcrHotKeyBox.Text, out var ocrHotKey, out var ocrHotKeyError))
+        {
+            ValidationText.Text = ocrHotKeyError;
+            return;
+        }
+        if (string.Equals(hotKey.DisplayName, ocrHotKey.DisplayName,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            ValidationText.Text = "划词提问和 OCR 框选不能使用同一个快捷键。";
+            return;
+        }
+
         _settings.CodexExecutable = CodexExecutableBox.Text.Trim();
         _settings.Language = LanguageBox.Text.Trim();
         _settings.HotKey = hotKey.DisplayName;
+        _settings.OcrHotKey = ocrHotKey.DisplayName;
         _settings.ReasoningEffort = reasoning;
         _settings.UseFastMode = FastModeBox.IsChecked == true;
+        _settings.OfficialPetsCompanionMode = OfficialPetsModeBox.IsChecked == true;
         _settings.ScreenWatchingEnabled = ScreenWatchingBox.IsChecked == true;
         _settings.ScreenWatchingIntervalMinutes = screenInterval;
+        _settings.WindowChangeCommentsEnabled = WindowChangeCommentsBox.IsChecked == true;
+        _settings.WindowChangeCommentCooldownMinutes = windowCooldown;
         _settings.ContextTurns = turns;
         _settings.MaximumAnswerCharacters = answerLength;
         _settings.TimeoutSeconds = timeout;
@@ -65,6 +86,12 @@ public partial class SettingsWindow : Window
     private void Cancel_Click(object sender, RoutedEventArgs e) => DialogResult = false;
 
     private void HotKeyBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        => CaptureHotKey(e, HotKeyBox);
+
+    private void OcrHotKeyBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        => CaptureHotKey(e, OcrHotKeyBox);
+
+    private void CaptureHotKey(System.Windows.Input.KeyEventArgs e, System.Windows.Controls.TextBox target)
     {
         e.Handled = true;
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
@@ -81,7 +108,7 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        HotKeyBox.Text = gesture.DisplayName;
+        target.Text = gesture.DisplayName;
         ValidationText.Text = string.Empty;
     }
 }

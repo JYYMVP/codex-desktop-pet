@@ -1,7 +1,7 @@
 <Window x:Class="CodexDesktopPet.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Codex 桌宠设置" Width="640" Height="760" MinHeight="680"
+        Title="Codex 桌宠设置" Width="640" Height="870" MinHeight="790"
         WindowStartupLocation="CenterScreen" ResizeMode="CanResize"
         Background="{StaticResource WindowBrush}" Foreground="{StaticResource TextBrush}">
     <Grid Margin="28">
@@ -10,6 +10,9 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -37,9 +40,27 @@
         <TextBox x:Name="LanguageBox" Grid.Row="2" Grid.Column="1" Margin="0,5" Padding="7" />
 
         <TextBlock Grid.Row="3" Text="全局快捷键" VerticalAlignment="Center" />
-        <TextBox x:Name="HotKeyBox" Grid.Row="3" Grid.Column="1" Margin="0,5" Padding="7"
-                 IsReadOnly="True" PreviewKeyDown="HotKeyBox_PreviewKeyDown"
-                 ToolTip="先单击此处，再直接按下新的组合键" />
+        <Grid Grid.Row="3" Grid.Column="1" Margin="0,5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="划词提问" Margin="0,0,0,4"
+                           Foreground="{StaticResource MutedTextBrush}" FontSize="11" />
+                <TextBox x:Name="HotKeyBox" Padding="7" IsReadOnly="True"
+                         PreviewKeyDown="HotKeyBox_PreviewKeyDown"
+                         ToolTip="先单击此处，再直接按下新的组合键" />
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+                <TextBlock Text="OCR 框选" Margin="0,0,0,4"
+                           Foreground="{StaticResource MutedTextBrush}" FontSize="11" />
+                <TextBox x:Name="OcrHotKeyBox" Padding="7" IsReadOnly="True"
+                         PreviewKeyDown="OcrHotKeyBox_PreviewKeyDown"
+                         ToolTip="触发后拖动框选图片或扫描文档区域" />
+            </StackPanel>
+        </Grid>
 
         <TextBlock Grid.Row="4" Text="推理强度" VerticalAlignment="Center" />
         <ComboBox x:Name="ReasoningEffortBox" Grid.Row="4" Grid.Column="1" Margin="0,5" Padding="5"
@@ -53,35 +74,45 @@
         <CheckBox x:Name="FastModeBox" Grid.Row="5" Grid.Column="1" Margin="0,8,0,6"
                   Content="Fast 模式（响应更快，但消耗更多套餐额度）" />
 
-        <CheckBox x:Name="ScreenWatchingBox" Grid.Row="6" Grid.Column="1" Margin="0,8,0,6"
+        <CheckBox x:Name="OfficialPetsModeBox" Grid.Row="6" Grid.Column="1" Margin="0,8,0,6"
+                  Content="官方 Pets 增强模式（划词后填入 Quick Chat，发送前由我确认）"
+                  ToolTip="启用后隐藏独立桌宠窗口，使用 Windows+Alt+P 唤起官方 Pets" />
+
+        <CheckBox x:Name="ScreenWatchingBox" Grid.Row="7" Grid.Column="1" Margin="0,8,0,6"
                   Content="定时看屏幕并吐槽（会截取当前全部显示器）" />
 
-        <TextBlock Grid.Row="7" Text="看屏幕间隔（分钟）" VerticalAlignment="Center" />
-        <TextBox x:Name="ScreenIntervalBox" Grid.Row="7" Grid.Column="1" Margin="0,5" Padding="7" />
+        <TextBlock Grid.Row="8" Text="看屏幕间隔（分钟）" VerticalAlignment="Center" />
+        <TextBox x:Name="ScreenIntervalBox" Grid.Row="8" Grid.Column="1" Margin="0,5" Padding="7" />
 
-        <TextBlock Grid.Row="8" Text="保留上下文轮数" VerticalAlignment="Center" />
-        <TextBox x:Name="ContextTurnsBox" Grid.Row="8" Grid.Column="1" Margin="0,5" Padding="7"
+        <CheckBox x:Name="WindowChangeCommentsBox" Grid.Row="9" Grid.Column="1" Margin="0,8,0,6"
+                  Content="切换到新窗口或页面时吐槽（会截取当前全部显示器）" />
+
+        <TextBlock Grid.Row="10" Text="新界面吐槽冷却（分钟）" VerticalAlignment="Center" />
+        <TextBox x:Name="WindowChangeCooldownBox" Grid.Row="10" Grid.Column="1" Margin="0,5" Padding="7" />
+
+        <TextBlock Grid.Row="11" Text="保留上下文轮数" VerticalAlignment="Center" />
+        <TextBox x:Name="ContextTurnsBox" Grid.Row="11" Grid.Column="1" Margin="0,5" Padding="7"
                  IsEnabled="False" ToolTip="持久 Codex 对话会自行管理上下文；保留此项用于旧设置兼容" />
 
-        <TextBlock Grid.Row="9" Text="回答最大字符数" VerticalAlignment="Center" />
-        <TextBox x:Name="MaximumAnswerBox" Grid.Row="9" Grid.Column="1" Margin="0,5" Padding="7" />
+        <TextBlock Grid.Row="12" Text="回答最大字符数" VerticalAlignment="Center" />
+        <TextBox x:Name="MaximumAnswerBox" Grid.Row="12" Grid.Column="1" Margin="0,5" Padding="7" />
 
-        <TextBlock Grid.Row="10" Text="回答超时（秒）" VerticalAlignment="Center" />
-        <TextBox x:Name="TimeoutBox" Grid.Row="10" Grid.Column="1" Margin="0,5" Padding="7" />
+        <TextBlock Grid.Row="13" Text="回答超时（秒）" VerticalAlignment="Center" />
+        <TextBox x:Name="TimeoutBox" Grid.Row="13" Grid.Column="1" Margin="0,5" Padding="7" />
 
-        <TextBlock Grid.Row="11" Text="像素宠物包路径" VerticalAlignment="Center" />
-        <TextBox x:Name="PetPackPathBox" Grid.Row="11" Grid.Column="1" Margin="0,5" Padding="7"
-                 ToolTip="留空使用内置 64×64 像素鱼；也可填写宠物包目录或 pet.json 路径" />
+        <TextBlock Grid.Row="14" Text="像素宠物包路径" VerticalAlignment="Center" />
+        <TextBox x:Name="PetPackPathBox" Grid.Row="14" Grid.Column="1" Margin="0,5" Padding="7"
+                 ToolTip="留空使用内置 64×64 发芽小精灵；也可填写宠物包目录或 pet.json 路径" />
 
-        <CheckBox x:Name="StayOnTopBox" Grid.Row="12" Grid.Column="1" Margin="0,12,0,6"
+        <CheckBox x:Name="StayOnTopBox" Grid.Row="15" Grid.Column="1" Margin="0,12,0,6"
                   Content="桌宠始终置顶" />
 
-        <TextBlock Grid.Row="13" Grid.ColumnSpan="2" Margin="0,18,0,0"
+        <TextBlock Grid.Row="16" Grid.ColumnSpan="2" Margin="0,18,0,0"
                    Foreground="{StaticResource MutedTextBrush}"
                    TextWrapping="Wrap"
-                   Text="每只宠物使用独立、持久的 Codex 对话。定时看屏幕默认关闭；开启后仅在设定间隔截一张图，生成吐槽后立即删除本地截图。宠物包采用最大 64×64 的透明 PNG 帧。" />
+                   Text="OCR 只在按下专用快捷键或菜单命令后截取你框选的区域，回答后立即删除临时图片。官方 Pets 增强模式只填入划词提问草稿，不会自动发送，且不运行两种自动截图。独立模式中每只宠物使用持久 Codex 对话；自动截图默认关闭并会在回答后删除。" />
 
-        <StackPanel Grid.Row="14" Grid.ColumnSpan="2" Orientation="Horizontal"
+        <StackPanel Grid.Row="17" Grid.ColumnSpan="2" Orientation="Horizontal"
                     HorizontalAlignment="Right" Margin="0,18,0,0">
             <TextBlock x:Name="ValidationText" Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center"
                        Margin="0,0,14,0" />

@@ -1,6 +1,6 @@
 # Pixel pet pack format
 
-Codex Desktop Pet uses a **maximum 64×64 logical pixel canvas**. The built-in fish is rendered
+Codex Desktop Pet uses a **maximum 64×64 logical pixel canvas**. The built-in sprout mascot is rendered
 on that canvas and scaled to 128×128 with nearest-neighbour sampling. A designer may use a smaller
 canvas or leave transparent padding around a smaller character; frames are never smoothed.
 

@@ -1,13 +1,8 @@
 # Conversation context modes
 
-The current application invokes `codex exec --ephemeral` for every selection. Each answer is isolated and receives no previous questions or answers.
+The application now has two explicit conversation owners:
 
-The planned context model has three explicit modes:
+1. **Standalone pet** — each local pet uses its own persistent Codex app-server thread. **New pet conversation** switches that pet to a fresh thread without deleting the old Codex history. Screen comments use a separate ephemeral thread so they do not pollute the pet conversation.
+2. **Official Pets companion** — the helper captures selected text and fills a bounded prompt into the official Pets Quick Chat. The helper does not press Enter and does not own or persist the resulting ChatGPT conversation. The user reviews and submits the prompt, and the official client owns its history and retention behavior.
 
-1. `isolated` — current default. Send only the selected text and the assistant instructions.
-2. `session` — keep a bounded list of recent turns in memory until the process exits or the user clicks **Clear context**.
-3. `persistent` — store an encrypted or user-readable local history only after explicit opt-in, with visible retention and deletion controls.
-
-`session` should be the next implementation target. It offers follow-up questions without silently creating a long-lived record. The request builder should include only a bounded number of recent turns and enforce a character/token budget before invoking Codex.
-
-The pet menu should always show the active mode and provide **Clear context**. Closing an answer bubble must not clear conversation state; it only changes visibility.
+Closing the standalone answer bubble changes only visibility. It does not clear the current pet thread. Companion mode does not add a second local transcript.

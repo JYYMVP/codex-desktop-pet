@@ -7,21 +7,22 @@ namespace CodexDesktopPet.Services;
 
 internal sealed class GlobalHotKeyManager : IDisposable
 {
-    private const int HotKeyId = 0xC0DE;
     private const int WmHotKey = 0x0312;
     private const uint ModNoRepeat = 0x4000;
     private readonly HwndSource _source;
+    private readonly int _hotKeyId;
 
     public event EventHandler? Pressed;
 
-    public GlobalHotKeyManager(Window window, ModifierKeys modifiers, Key key,
-        string displayName)
+    public GlobalHotKeyManager(Window window, int hotKeyId, ModifierKeys modifiers,
+        Key key, string displayName)
     {
+        _hotKeyId = hotKeyId;
         var handle = new WindowInteropHelper(window).Handle;
         _source = HwndSource.FromHwnd(handle)
             ?? throw new InvalidOperationException("无法获取桌宠窗口句柄。");
         _source.AddHook(WndProc);
-        if (RegisterHotKey(handle, HotKeyId, (uint)modifiers | ModNoRepeat,
+        if (RegisterHotKey(handle, _hotKeyId, (uint)modifiers | ModNoRepeat,
                 (uint)KeyInterop.VirtualKeyFromKey(key)))
             return;
 
@@ -32,7 +33,7 @@ internal sealed class GlobalHotKeyManager : IDisposable
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam,
         ref bool handled)
     {
-        if (msg == WmHotKey && wParam.ToInt32() == HotKeyId)
+        if (msg == WmHotKey && wParam.ToInt32() == _hotKeyId)
         {
             handled = true;
             Pressed?.Invoke(this, EventArgs.Empty);
@@ -42,7 +43,7 @@ internal sealed class GlobalHotKeyManager : IDisposable
 
     public void Dispose()
     {
-        UnregisterHotKey(_source.Handle, HotKeyId);
+        UnregisterHotKey(_source.Handle, _hotKeyId);
         _source.RemoveHook(WndProc);
     }
 
