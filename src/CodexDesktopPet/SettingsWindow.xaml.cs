@@ -21,6 +21,7 @@ public partial class SettingsWindow : Window
         FastModeBox.IsChecked = settings.UseFastMode;
         OfficialPetsModeBox.IsChecked = settings.OfficialPetsCompanionMode;
         PetHiddenBox.IsChecked = settings.PetHidden;
+        FollowCodexActivityBox.IsChecked = settings.FollowCodexActivity;
         ScreenWatchingBox.IsChecked = settings.ScreenWatchingEnabled;
         ScreenIntervalBox.Text = settings.ScreenWatchingIntervalMinutes.ToString();
         WindowChangeCommentsBox.IsChecked = settings.WindowChangeCommentsEnabled;
@@ -83,6 +84,7 @@ public partial class SettingsWindow : Window
         _settings.UseFastMode = FastModeBox.IsChecked == true;
         _settings.OfficialPetsCompanionMode = OfficialPetsModeBox.IsChecked == true;
         _settings.PetHidden = PetHiddenBox.IsChecked == true;
+        _settings.FollowCodexActivity = FollowCodexActivityBox.IsChecked == true;
         _settings.ScreenWatchingEnabled = ScreenWatchingBox.IsChecked == true;
         _settings.ScreenWatchingIntervalMinutes = screenInterval;
         _settings.WindowChangeCommentsEnabled = WindowChangeCommentsBox.IsChecked == true;

@@ -1,12 +1,8 @@
 # 插件版安装与验证（Windows）
 
 本教程用于亲自验证 `plugin` 分支。插件负责在 Codex 中提供发现、安装引导和
-`SessionStart` 启动 hook；透明窗口、全局快捷键和选区读取仍由独立的 Windows
-桌宠进程完成。
-
-> 当前状态：插件清单、marketplace、安装脚本和插件技能已经验证可用。当前测试环境中的
-> Codex CLI `0.169.0-alpha.11.1` 没有实际派发插件的 `SessionStart` hook，因此请先按本文的
-> “手动启动验证”确认桌宠本体可用。这个限制不会影响普通版或手动启动。
+启动与活动状态 hooks；透明窗口、全局快捷键和选区读取仍由独立的 Windows
+桌宠进程完成。活动 hooks 只写入会话 ID、事件名、状态和时间，不写入聊天内容。
 
 ## 1. 准备环境
 
@@ -166,19 +162,20 @@ Get-Process CodexDesktopPet | Select-Object Id, Path
 
 关闭窗口只会隐藏到托盘；需要从托盘菜单选择“退出”才能完全结束。
 
-## 8. 验证 Codex 自动启动 hook
+## 8. 验证 Codex 启动与活动 hooks
 
 先从托盘退出第 7 步启动的桌宠，确保不存在 `CodexDesktopPet` 进程。然后完全退出并重新打开
-Codex，或启动一个新的 CLI 会话。首次遇到插件 hook 审核时，请先核对
-命令确实指向本仓库的 `scripts/start-pet.ps1`，然后由你决定是否信任。Codex 不会因为插件
-已安装就自动信任其中的 hook。
+Codex，或启动一个新的 CLI 会话。首次遇到插件 hook 审核时，请核对命令只指向本仓库的
+`scripts/start-pet.ps1` 和 `hooks/pet-status.ps1`，然后由你决定是否信任。Codex 不会因为插件
+已安装就自动信任其中的 hooks；插件更新导致定义哈希变化时也需要重新审核。
 
 如果新会话没有自动出现桌宠：
 
 - 先用第 7 步确认启动脚本本身可用；
 - 再运行 `codex plugin list --json`，确认插件仍处于启用状态；
-- 当前已知的 Codex CLI alpha 版本可能不派发插件 `SessionStart` hook，此时继续手动启动即可；
-- 不要反复安装插件来解决 hook 不派发的问题。
+- 打开 **Settings → Hooks**，确认 `SessionStart`、`UserPromptSubmit`、`PreModelRequest`、
+  `PermissionRequest`、`Stop`、`Interrupt` 和 `SessionEnd` 均已审核；
+- 不要反复安装插件来解决未信任的 hook。
 
 hook 若被执行，会尝试在插件数据目录写入 `desktop-pet-hook.log`。可以这样查找：
 
@@ -194,6 +191,9 @@ Get-ChildItem "$env:USERPROFILE\.codex\plugins" `
 ```text
 %LOCALAPPDATA%\CodexDesktopPet\desktop-pet.log
 ```
+
+活动状态元数据位于 `%LOCALAPPDATA%\CodexDesktopPet\activity`。当任意聊天开始工作、等待
+确认或结束时，桌宠日志应出现 `Aggregated Codex activity changed`。
 
 ## 9. 更新插件分支
 

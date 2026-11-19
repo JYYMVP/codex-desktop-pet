@@ -29,6 +29,7 @@ $defaults = [ordered]@{
     ScreenWatchingIntervalMinutes = 10
     WindowChangeCommentsEnabled = $false
     WindowChangeCommentCooldownMinutes = 2
+    FollowCodexActivity = $true
     StayOnTop = $true
     UseFastMode = $false
 }
@@ -153,6 +154,11 @@ function Get-SettingsSchema {
                 minimum = 1
                 maximum = 60
             }
+            FollowCodexActivity = [ordered]@{
+                type = "boolean"
+                title = "Follow Codex activity"
+                description = "Animate the standalone pet from Codex lifecycle status metadata without reading chat content."
+            }
             StayOnTop = [ordered]@{
                 type = "boolean"
                 title = "Keep standalone pet on top"
@@ -173,6 +179,7 @@ function Get-SettingsSchema {
             "ScreenWatchingIntervalMinutes",
             "WindowChangeCommentsEnabled",
             "WindowChangeCommentCooldownMinutes",
+            "FollowCodexActivity",
             "StayOnTop",
             "UseFastMode"
         )
@@ -196,6 +203,7 @@ function Get-SettingsLayout {
             items = @(
                 [ordered]@{ kind = "property"; property = "PetHidden" },
                 [ordered]@{ kind = "property"; property = "TogglePetHotKey" },
+                [ordered]@{ kind = "property"; property = "FollowCodexActivity" },
                 [ordered]@{ kind = "property"; property = "StayOnTop" }
             )
         },
@@ -284,6 +292,9 @@ function Convert-SettingUpdates([object]$SetObject) {
                 $updates[$property.Name] = Convert-StrictBoolean $property.Value $property.Name
             }
             "StayOnTop" {
+                $updates[$property.Name] = Convert-StrictBoolean $property.Value $property.Name
+            }
+            "FollowCodexActivity" {
                 $updates[$property.Name] = Convert-StrictBoolean $property.Value $property.Name
             }
             "UseFastMode" {
@@ -442,7 +453,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     _meta = [ordered]@{
                         "io.modelcontextprotocol/serverInfo" = [ordered]@{
                             name = "codex-desktop-pet-settings"
-                            version = "0.6.0"
+                            version = "0.7.0"
                         }
                     }
                     capabilities = [ordered]@{
@@ -459,7 +470,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     protocolVersion = $protocolVersion
                     serverInfo = [ordered]@{
                         name = "codex-desktop-pet-settings"
-                        version = "0.6.0"
+                        version = "0.7.0"
                     }
                     capabilities = [ordered]@{
                         tools = [ordered]@{ listChanged = $false }

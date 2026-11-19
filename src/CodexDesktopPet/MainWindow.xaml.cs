@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private readonly CodexAppServerService _codex;
     private readonly CodexUsageService _usage;
     private readonly PixelPetController _petController;
+    private readonly CodexActivityMonitor _activityMonitor = new();
     private readonly ScreenCaptureService _screenCapture = new();
     private readonly DispatcherTimer _screenWatchTimer = new();
     private readonly DispatcherTimer _windowWatchTimer = new();
@@ -43,6 +44,7 @@ public partial class MainWindow : Window
     private string? _pendingForegroundIdentity;
     private DateTime _pendingForegroundSinceUtc;
     private DateTime _lastWindowCommentUtc = DateTime.MinValue;
+    private CodexActivityState _externalActivityState = CodexActivityState.Idle;
 
     public MainWindow()
     {
@@ -56,6 +58,7 @@ public partial class MainWindow : Window
         _windowWatchTimer.Tick += async (_, _) => await CheckForegroundWindowAsync();
         _commentBubbleTimer.Interval = TimeSpan.FromSeconds(9);
         _commentBubbleTimer.Tick += (_, _) => HideCommentBubble(resetPetState: true);
+        _activityMonitor.StatusChanged += ActivityMonitor_StatusChanged;
         SetAnswerMarkdown(_answerMarkdown);
     }
 
@@ -73,6 +76,7 @@ public partial class MainWindow : Window
         StartIdleAnimation();
         ConfigureScreenWatching();
         ConfigureWindowChangeComments();
+        ConfigureCodexActivityMonitoring();
 
         try { RegisterConfiguredHotKey(); }
         catch (Exception ex)
@@ -135,6 +139,7 @@ public partial class MainWindow : Window
             _requestCancellation?.Dispose();
             _requestCancellation = null;
             _busy = false;
+            ApplyExternalActivityState();
         }
     }
 
@@ -157,6 +162,7 @@ public partial class MainWindow : Window
     private void ShowMessage(string message, PetState state)
     {
         HideCommentBubble(resetPetState: false);
+        ComposerPanel.Visibility = Visibility.Collapsed;
         SetAnswerMarkdown(message);
         AnswerPanel.Visibility = Visibility.Visible;
         SetPetState(state);
@@ -166,10 +172,10 @@ public partial class MainWindow : Window
     {
         _commentBubbleTimer.Stop();
         AnswerPanel.Visibility = Visibility.Collapsed;
+        ComposerPanel.Visibility = Visibility.Collapsed;
         CommentText.Text = comment.Trim();
         CommentBubble.Visibility = Visibility.Visible;
         SetPetState(PetState.Ready);
-        StatusText.Text = "刚刚看到的桌面";
         _commentBubbleTimer.Start();
     }
 
@@ -192,15 +198,18 @@ public partial class MainWindow : Window
         StopThinkingAnimation();
         var (status, color) = state switch
         {
-            PetState.Capturing => ("正在读取选区…", System.Windows.Media.Color.FromRgb(139, 227, 255)),
-            PetState.Thinking => ("Codex 正在思考…", System.Windows.Media.Color.FromRgb(187, 139, 255)),
-            PetState.Ready => ("回答好啦", System.Windows.Media.Color.FromRgb(104, 233, 255)),
-            PetState.NeedsInput => ("先选中一些文字吧", System.Windows.Media.Color.FromRgb(255, 210, 112)),
-            PetState.Error => ("遇到了一点问题", System.Windows.Media.Color.FromRgb(255, 122, 146)),
-            _ => ($"选中文字后按 {CurrentHotKey.DisplayName}", System.Windows.Media.Color.FromRgb(104, 233, 255))
+            PetState.Capturing => ("正在读取", System.Windows.Media.Color.FromRgb(139, 227, 255)),
+            PetState.Thinking => ("工作中", System.Windows.Media.Color.FromRgb(187, 139, 255)),
+            PetState.Ready => ("已就绪", System.Windows.Media.Color.FromRgb(104, 233, 255)),
+            PetState.NeedsInput => ("需要输入", System.Windows.Media.Color.FromRgb(255, 210, 112)),
+            PetState.Error => ("已阻塞", System.Windows.Media.Color.FromRgb(255, 122, 146)),
+            _ => (string.Empty, System.Windows.Media.Color.FromRgb(104, 233, 255))
         };
 
         StatusText.Text = status;
+        StatusChip.Visibility = state is PetState.Idle or PetState.Ready
+            ? Visibility.Collapsed
+            : Visibility.Visible;
         GlowRing.Stroke = new SolidColorBrush(color) { Opacity = 0.65 };
         _petController.SetState(state);
         if (state == PetState.Thinking)
@@ -419,6 +428,7 @@ public partial class MainWindow : Window
             _requestCancellation?.Dispose();
             _requestCancellation = null;
             _busy = false;
+            ApplyExternalActivityState();
             if (wasVisible && !IsVisible && !_settings.OfficialPetsCompanionMode)
                 Show();
         }
@@ -464,6 +474,7 @@ public partial class MainWindow : Window
             _requestCancellation?.Dispose();
             _requestCancellation = null;
             _busy = false;
+            ApplyExternalActivityState();
         }
     }
 
@@ -471,15 +482,6 @@ public partial class MainWindow : Window
         AnswerPanel.Visibility = AnswerPanel.Visibility == Visibility.Visible
             ? Visibility.Collapsed
             : Visibility.Visible;
-
-    private void MoreButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (MoreButton.ContextMenu is null)
-            return;
-        MoreButton.ContextMenu.PlacementTarget = MoreButton;
-        MoreButton.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
-        MoreButton.ContextMenu.IsOpen = true;
-    }
 
     private void HidePet_Click(object sender, RoutedEventArgs e) =>
         HideStandalonePet(persistVisibility: true);
@@ -510,6 +512,7 @@ public partial class MainWindow : Window
             return;
 
         _busy = true;
+        ComposerPanel.Visibility = Visibility.Collapsed;
         AnswerPanel.Visibility = Visibility.Visible;
         DirectQuestionBox.Clear();
         try
@@ -526,6 +529,7 @@ public partial class MainWindow : Window
             _requestCancellation?.Dispose();
             _requestCancellation = null;
             _busy = false;
+            ApplyExternalActivityState();
         }
     }
 
@@ -559,7 +563,12 @@ public partial class MainWindow : Window
 
     private void FocusQuestion_Click(object sender, RoutedEventArgs e)
     {
-        AnswerPanel.Visibility = Visibility.Visible;
+        HideCommentBubble(resetPetState: false);
+        ComposerPanel.Visibility = ComposerPanel.Visibility == Visibility.Visible
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        if (ComposerPanel.Visibility != Visibility.Visible)
+            return;
         Activate();
         DirectQuestionBox.Focus();
     }
@@ -612,6 +621,7 @@ public partial class MainWindow : Window
             _petController.Reload(_settings.PetPackPath);
             ConfigureScreenWatching();
             ConfigureWindowChangeComments();
+            ConfigureCodexActivityMonitoring();
             UpdateContextHint();
             RecreateTrayIcon();
             if (_settings.OfficialPetsCompanionMode || _settings.PetHidden)
@@ -727,7 +737,39 @@ public partial class MainWindow : Window
             _requestCancellation?.Dispose();
             _requestCancellation = null;
             _busy = false;
+            ApplyExternalActivityState();
         }
+    }
+
+    private void ConfigureCodexActivityMonitoring()
+    {
+        if (_settings.FollowCodexActivity && !_settings.OfficialPetsCompanionMode)
+            _activityMonitor.Start();
+        else
+            _activityMonitor.Stop();
+        AppLog.Write($"Codex activity monitoring configured. " +
+                     $"Enabled={_settings.FollowCodexActivity && !_settings.OfficialPetsCompanionMode}");
+    }
+
+    private void ActivityMonitor_StatusChanged(object? sender, CodexActivityState state)
+    {
+        _externalActivityState = state;
+        if (!_busy)
+            ApplyExternalActivityState();
+    }
+
+    private void ApplyExternalActivityState()
+    {
+        if (_busy || !_settings.FollowCodexActivity || _settings.OfficialPetsCompanionMode)
+            return;
+        SetPetState(_externalActivityState switch
+        {
+            CodexActivityState.Running => PetState.Thinking,
+            CodexActivityState.NeedsInput => PetState.NeedsInput,
+            CodexActivityState.Ready => PetState.Ready,
+            CodexActivityState.Blocked => PetState.Error,
+            _ => PetState.Idle
+        });
     }
 
     private void ConfigureWindowChangeComments()
@@ -856,12 +898,9 @@ public partial class MainWindow : Window
         var displayName = CurrentHotKey.DisplayName;
         var ocrDisplayName = CurrentOcrHotKey.DisplayName;
         var toggleDisplayName = CurrentTogglePetHotKey.DisplayName;
-        StatusText.Text = $"选中文字后按 {displayName}";
-        PetBody.ToolTip = $"单击：展开/收起回答\n拖动：移动桌宠\n显示/隐藏：{toggleDisplayName}";
+        PetBody.ToolTip = $"单击：快速提问\n拖动：移动桌宠\n显示/隐藏：{toggleDisplayName}";
         PetOcrMenuItem.Header = $"OCR 框选识别（{ocrDisplayName}）";
-        MoreOcrMenuItem.Header = $"OCR 框选识别（{ocrDisplayName}）";
         PetHideMenuItem.Header = $"隐藏桌宠（{toggleDisplayName}）";
-        MoreHideMenuItem.Header = $"隐藏桌宠（{toggleDisplayName}）";
         if (_answerMarkdown.StartsWith("我已经就位。", StringComparison.Ordinal))
             SetAnswerMarkdown($"我已经就位。选中文字后按 {displayName}，我会给出简要回答。");
         if (_trayIcon is not null)
@@ -905,11 +944,21 @@ public partial class MainWindow : Window
         {
             if (CommentBubble.Visibility == Visibility.Visible)
                 HideCommentBubble(resetPetState: true);
+            else if (AnswerPanel.Visibility == Visibility.Visible)
+                AnswerPanel.Visibility = Visibility.Collapsed;
             else
-                AnswerPanel.Visibility = AnswerPanel.Visibility == Visibility.Visible
+            {
+                ComposerPanel.Visibility = ComposerPanel.Visibility == Visibility.Visible
                     ? Visibility.Collapsed
                     : Visibility.Visible;
-            AppLog.Write($"Pet clicked. AnswerVisible={AnswerPanel.Visibility == Visibility.Visible}");
+                if (ComposerPanel.Visibility == Visibility.Visible)
+                {
+                    Activate();
+                    DirectQuestionBox.Focus();
+                }
+            }
+            AppLog.Write($"Pet clicked. AnswerVisible={AnswerPanel.Visibility == Visibility.Visible}; " +
+                         $"ComposerVisible={ComposerPanel.Visibility == Visibility.Visible}");
         }
 
         _petPressPosition = null;
@@ -937,6 +986,7 @@ public partial class MainWindow : Window
         _screenWatchTimer.Stop();
         _windowWatchTimer.Stop();
         _commentBubbleTimer.Stop();
+        _activityMonitor.Dispose();
         _codex.Dispose();
         _petController.Dispose();
     }

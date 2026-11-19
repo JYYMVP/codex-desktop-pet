@@ -7,10 +7,10 @@ The plugin currently contains:
 - a portable `plugin.json` manifest;
 - a repo-local marketplace entry;
 - an onboarding and troubleshooting skill;
-- a `SessionStart` hook, subject to Codex's user trust review, that starts an already installed companion;
+- trusted lifecycle hooks that start the companion and mirror content-free Codex activity states across chats;
 - deterministic install and uninstall scripts for the published Windows files;
 - design contracts for local pixel pets and persistent per-pet conversation context;
-- the Codex-style Quick Chat surface, optional screen comments, and local pet library from `main`.
+- an official-Pets-style compact surface, optional screen comments, and local pet library from `main`.
 - an opt-in official Pets companion mode that hides the duplicate pet window and fills selected text into the official Pets Quick Chat for confirmation.
 - an explicit OCR region shortcut that freezes the desktop, crops only the dragged region, asks Codex to recognize it, and deletes the temporary captures.
 - native structured settings for both global shortcuts and the helper's privacy-sensitive automatic features.

@@ -84,20 +84,21 @@ Codex 报告安装完成后：
 本地 marketplace 插件更新后，需要重新加载或重启桌面应用，因为 Codex 使用安装到缓存目录的副本，
 而不是每次直接读取仓库文件。
 
-## 五、在 Codex 界面中审核启动 Hook
+## 五、在 Codex 界面中审核启动与活动 Hooks
 
-插件包含一个 `SessionStart` Hook，用于在新的本地 Codex 会话开始时启动已安装的桌宠助手。
+插件包含 `SessionStart` 启动 Hook，以及把多个 Codex 聊天状态同步给桌宠的活动 Hooks。
+活动脚本只写入状态元数据，不读取或保存提示词、回答和工具参数。
 
 1. 在 Codex 输入框输入 `/hooks`。
-2. 打开 `SessionStart` 下的 Codex Desktop Pet 处理器。
-3. 确认命令指向插件目录中的 `scripts/start-pet.ps1`。
+2. 打开 Codex Desktop Pet 的各个处理器。
+3. 确认命令只指向插件目录中的 `scripts/start-pet.ps1` 和 `hooks/pet-status.ps1`。
 4. 选择信任或启用。
 5. 新建一个 Codex 本地聊天来验证启动。
 
 插件安装并不等于自动信任 Hook。你应在 Codex 界面中核对命令后自己做决定。
 
-> 已知情况：部分 Codex CLI / 桌面版本可能不派发这个 Hook。即使 Hook 没有自动运行，
-> 手动让 Codex 启动助手仍然可用。
+> 如果不信任这些 Hooks，手动启动、划词、OCR、问答和屏幕吐槽仍然可用，只是桌宠不会
+> 跟随其他 Codex 聊天显示工作状态。
 
 ## 六、在插件详情页配置功能
 

@@ -25,6 +25,7 @@ internal sealed class AppSettings
     public int ScreenWatchingIntervalMinutes { get; set; } = 10;
     public bool WindowChangeCommentsEnabled { get; set; }
     public int WindowChangeCommentCooldownMinutes { get; set; } = 2;
+    public bool FollowCodexActivity { get; set; } = true;
     public bool StayOnTop { get; set; } = true;
 
     public static string SettingsPath => Path.Combine(

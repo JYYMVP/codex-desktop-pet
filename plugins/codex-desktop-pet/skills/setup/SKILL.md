@@ -11,6 +11,7 @@ Preserve these boundaries:
 
 - The Windows process owns the global shortcut and selection capture. In standalone mode it also owns the transparent window and pixel rendering.
 - The plugin supplies discovery, onboarding, and a trusted session-start hook. Screen watching belongs to the Windows process, is off by default, and must be enabled by the user.
+- Trusted lifecycle hooks mirror only per-session activity metadata into `%LOCALAPPDATA%/CodexDesktopPet/activity`. They never copy prompts, answers, selected text, tool arguments, or transcript contents. The standalone pet aggregates those files into Running, Needs input, Ready, and Blocked animations.
 - Selected text is sent to Codex only after the user presses the configured shortcut.
 - OCR uses a separate configurable shortcut. It must freeze the desktop for an explicit drag selection, send only the cropped region, and delete both temporary images on success, failure, or cancellation.
 - Do not copy code or assets from OpenAI's proprietary Work Pets plugin. Independently implement any compatible exporter from documented file contracts.
@@ -26,5 +27,7 @@ For setup, first check Windows, the .NET 8 runtime, `codex.exe`, and the expecte
 For troubleshooting, inspect `%LOCALAPPDATA%\CodexDesktopPet\desktop-pet.log`, then distinguish hotkey registration, selection capture, Codex connectivity, and rendering failures. Prefer the smallest repair and retest the actual shortcut path.
 
 The plugin's structured settings include `HotKey` for selected text, `OcrHotKey` for region recognition, `TogglePetHotKey` for showing or hiding the standalone pet, and `PetHidden` for its persisted visibility. The three shortcuts must be valid, distinct Windows modifier combinations. Their defaults are `Ctrl+Alt+Q`, `Ctrl+Alt+R`, and `Ctrl+Alt+H`.
+
+`FollowCodexActivity` enables official-style activity mirroring for the standalone pet. Updating these hooks changes their trust hash, so tell the user to review and trust the plugin hooks again in **Settings → Hooks**. If they decline, direct questions, OCR, and screen comments still work, but activity from other Codex chats will not animate the pet.
 
 When the user asks about conversation memory, explain that each pet uses its own persistent Codex thread. “New pet conversation” switches to a new thread without deleting old Codex history. Screen comments use a separate ephemeral thread so they do not pollute the pet conversation.
