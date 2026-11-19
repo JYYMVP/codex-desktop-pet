@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _windowWatchTimer = new();
     private readonly DispatcherTimer _commentBubbleTimer = new();
     private readonly DispatcherTimer _interactionAnimationTimer = new();
+    private readonly DispatcherTimer _pointerLookTimer = new();
     private GlobalHotKeyManager? _hotKey;
     private GlobalHotKeyManager? _ocrHotKey;
     private GlobalHotKeyManager? _togglePetHotKey;
@@ -46,6 +47,7 @@ public partial class MainWindow : Window
     private DateTime _pendingForegroundSinceUtc;
     private DateTime _lastWindowCommentUtc = DateTime.MinValue;
     private CodexActivityState _externalActivityState = CodexActivityState.Idle;
+    private PetState _currentPetState = PetState.Idle;
 
     public MainWindow()
     {
@@ -66,6 +68,8 @@ public partial class MainWindow : Window
             _interactionAnimationTimer.Stop();
             RestoreRestingPetState();
         };
+        _pointerLookTimer.Interval = TimeSpan.FromMilliseconds(100);
+        _pointerLookTimer.Tick += (_, _) => UpdatePointerLook();
         _activityMonitor.StatusChanged += ActivityMonitor_StatusChanged;
         SetAnswerMarkdown(_answerMarkdown);
     }
@@ -85,6 +89,7 @@ public partial class MainWindow : Window
         ConfigureScreenWatching();
         ConfigureWindowChangeComments();
         ConfigureCodexActivityMonitoring();
+        ConfigurePointerLook();
 
         try { RegisterConfiguredHotKey(); }
         catch (Exception ex)
@@ -205,6 +210,7 @@ public partial class MainWindow : Window
 
     private void SetPetState(PetState state)
     {
+        _currentPetState = state;
         StopThinkingAnimation();
         var (status, color) = state switch
         {
@@ -611,6 +617,7 @@ public partial class MainWindow : Window
         if (!string.Equals(previousPath, _settings.PetPackPath, StringComparison.OrdinalIgnoreCase))
         {
             _petController.Reload(_settings.PetPackPath);
+            ConfigurePointerLook();
             ShowMessage("桌宠已经切换。", PetState.Ready);
         }
     }
@@ -648,6 +655,7 @@ public partial class MainWindow : Window
             ConfigureScreenWatching();
             ConfigureWindowChangeComments();
             ConfigureCodexActivityMonitoring();
+            ConfigurePointerLook();
             UpdateContextHint();
             RecreateTrayIcon();
             if (_settings.OfficialPetsCompanionMode || _settings.PetHidden)
@@ -787,6 +795,45 @@ public partial class MainWindow : Window
             _activityMonitor.Stop();
         AppLog.Write($"Codex activity monitoring configured. " +
                      $"Enabled={_settings.FollowCodexActivity && !_settings.OfficialPetsCompanionMode}");
+    }
+
+    private void ConfigurePointerLook()
+    {
+        _pointerLookTimer.Stop();
+        if (_settings.FollowPointerWithPet && _petController.SupportsLookDirections &&
+            !_settings.OfficialPetsCompanionMode)
+            _pointerLookTimer.Start();
+        AppLog.Write($"Pointer look configured. Enabled={_pointerLookTimer.IsEnabled}; " +
+                     $"Supported={_petController.SupportsLookDirections}");
+    }
+
+    private void UpdatePointerLook()
+    {
+        if (!_settings.FollowPointerWithPet || !_petController.SupportsLookDirections ||
+            !IsVisible || _busy || _interactionAnimationTimer.IsEnabled ||
+            _currentPetState is not (PetState.Idle or PetState.Ready or
+                PetState.LookFirstHalf or PetState.LookSecondHalf))
+            return;
+        try
+        {
+            var petCenter = PetImage.PointToScreen(new System.Windows.Point(
+                PetImage.ActualWidth / 2, PetImage.ActualHeight / 2));
+            var cursor = Forms.Cursor.Position;
+            var dx = cursor.X - petCenter.X;
+            var dy = cursor.Y - petCenter.Y;
+            if (dx * dx + dy * dy < 20 * 20)
+                return;
+            var degrees = Math.Atan2(dx, -dy) * 180 / Math.PI;
+            if (degrees < 0)
+                degrees += 360;
+            var index = (int)Math.Round(degrees / 22.5) % 16;
+            if (_petController.SetLookDirection(index))
+                _currentPetState = index < 8 ? PetState.LookFirstHalf : PetState.LookSecondHalf;
+        }
+        catch (InvalidOperationException)
+        {
+            // Window coordinates can be unavailable briefly while showing or hiding.
+        }
     }
 
     private void ActivityMonitor_StatusChanged(object? sender, CodexActivityState state)
@@ -1039,6 +1086,7 @@ public partial class MainWindow : Window
         _windowWatchTimer.Stop();
         _commentBubbleTimer.Stop();
         _interactionAnimationTimer.Stop();
+        _pointerLookTimer.Stop();
         _activityMonitor.Dispose();
         _codex.Dispose();
         _petController.Dispose();

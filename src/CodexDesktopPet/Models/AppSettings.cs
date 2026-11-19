@@ -27,6 +27,7 @@ internal sealed class AppSettings
     public int WindowChangeCommentCooldownMinutes { get; set; } = 2;
     public int CommentBubbleSeconds { get; set; } = 14;
     public bool FollowCodexActivity { get; set; } = true;
+    public bool FollowPointerWithPet { get; set; } = true;
     public bool StayOnTop { get; set; } = true;
 
     public static string SettingsPath => Path.Combine(

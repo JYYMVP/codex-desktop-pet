@@ -83,9 +83,10 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 ```
 
 如果程序找不到 `codex.exe`，请把 `CodexExecutable` 改为本机 Codex 可执行文件的完整路径。
-也可以直接右键桌宠选择“设置…”，调整划词/OCR 快捷键、回答语言、超时、回答长度、上下文轮数、
-推理强度、碎碎念停留时间、活动跟随和置顶状态。官方 Pets 兼容模式已标记为暂停开发的实验项。
-设置窗口支持滚动，并会禁用与所选模式冲突的选项。划词助手默认使用 `none` 推理强度，并为其 Codex 子进程关闭
+安装插件后，优先在插件详情页展开 `desktop-pet-settings`，直接调整显示/隐藏、活动状态跟随、
+鼠标视线跟随、自动碎碎念、置顶、快捷键和 Fast mode；保存后桌宠会自动重启应用设置。
+也可以右键桌宠选择“设置…”，调整回答语言、超时、回答长度、推理强度和宠物包路径等高级项。
+高级设置窗口支持滚动，并会禁用与所选模式冲突的选项。划词助手默认使用 `none` 推理强度，并为其 Codex 子进程关闭
 hooks、plugins、apps 和 MCP，避免桌宠插件递归启动及无关工具初始化。桌宠使用
 HTTPS-only 的独立 Codex provider，绕过部分网络环境中约 90 秒的 WebSocket 重试；这不会
 修改全局 Codex 配置。设置中的 Fast mode

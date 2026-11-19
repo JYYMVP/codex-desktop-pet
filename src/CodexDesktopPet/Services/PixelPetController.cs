@@ -15,6 +15,11 @@ internal sealed class PixelPetController : IDisposable
     private Dictionary<PetState, List<ImageSource>> _frames = [];
     private PetState _state = PetState.Idle;
     private int _frameIndex;
+    private bool _fixedFrame;
+
+    public bool SupportsLookDirections =>
+        _frames.TryGetValue(PetState.LookFirstHalf, out var first) && first.Count >= 8 &&
+        _frames.TryGetValue(PetState.LookSecondHalf, out var second) && second.Count >= 8;
 
     public PixelPetController(System.Windows.Controls.Image image, string packPath)
     {
@@ -47,6 +52,7 @@ internal sealed class PixelPetController : IDisposable
         }
 
         _frameIndex = 0;
+        _fixedFrame = false;
         _timer.Start();
         Render();
     }
@@ -55,11 +61,26 @@ internal sealed class PixelPetController : IDisposable
     {
         _state = state;
         _frameIndex = 0;
+        _fixedFrame = false;
         Render();
+    }
+
+    public bool SetLookDirection(int clockwiseIndex)
+    {
+        if (!SupportsLookDirections)
+            return false;
+        var normalized = ((clockwiseIndex % 16) + 16) % 16;
+        _state = normalized < 8 ? PetState.LookFirstHalf : PetState.LookSecondHalf;
+        _frameIndex = normalized % 8;
+        _fixedFrame = true;
+        Render();
+        return true;
     }
 
     private void AdvanceFrame()
     {
+        if (_fixedFrame)
+            return;
         _frameIndex++;
         Render();
     }

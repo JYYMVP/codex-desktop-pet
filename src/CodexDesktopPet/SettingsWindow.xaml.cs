@@ -22,6 +22,7 @@ public partial class SettingsWindow : Window
         OfficialPetsModeBox.IsChecked = settings.OfficialPetsCompanionMode;
         PetHiddenBox.IsChecked = settings.PetHidden;
         FollowCodexActivityBox.IsChecked = settings.FollowCodexActivity;
+        FollowPointerWithPetBox.IsChecked = settings.FollowPointerWithPet;
         ScreenWatchingBox.IsChecked = settings.ScreenWatchingEnabled;
         ScreenIntervalBox.Text = settings.ScreenWatchingIntervalMinutes.ToString();
         WindowChangeCommentsBox.IsChecked = settings.WindowChangeCommentsEnabled;
@@ -88,6 +89,7 @@ public partial class SettingsWindow : Window
         _settings.OfficialPetsCompanionMode = OfficialPetsModeBox.IsChecked == true;
         _settings.PetHidden = PetHiddenBox.IsChecked == true;
         _settings.FollowCodexActivity = FollowCodexActivityBox.IsChecked == true;
+        _settings.FollowPointerWithPet = FollowPointerWithPetBox.IsChecked == true;
         _settings.ScreenWatchingEnabled = ScreenWatchingBox.IsChecked == true;
         _settings.ScreenWatchingIntervalMinutes = screenInterval;
         _settings.WindowChangeCommentsEnabled = WindowChangeCommentsBox.IsChecked == true;
@@ -108,6 +110,7 @@ public partial class SettingsWindow : Window
     {
         var standalone = OfficialPetsModeBox.IsChecked != true;
         FollowCodexActivityBox.IsEnabled = standalone;
+        FollowPointerWithPetBox.IsEnabled = standalone;
         ScreenWatchingBox.IsEnabled = standalone;
         WindowChangeCommentsBox.IsEnabled = standalone;
         ScreenIntervalBox.IsEnabled = standalone && ScreenWatchingBox.IsChecked == true;

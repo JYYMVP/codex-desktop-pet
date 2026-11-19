@@ -18,6 +18,21 @@ $settingsDirectory = if ([string]::IsNullOrWhiteSpace($TestSettingsDirectory)) {
 }
 $settingsPath = Join-Path $settingsDirectory "settings.json"
 $installedExe = Join-Path $settingsDirectory "app\CodexDesktopPet.exe"
+$uiTextPath = Join-Path $PSScriptRoot "settings-ui.zh-CN.json"
+$uiText = if (Test-Path -LiteralPath $uiTextPath -PathType Leaf) {
+    $utf8 = [Text.UTF8Encoding]::new($false)
+    [IO.File]::ReadAllText($uiTextPath, $utf8) | ConvertFrom-Json
+} else {
+    [pscustomobject]@{}
+}
+
+function Get-UiText([string]$Name, [string]$Fallback) {
+    $property = $uiText.PSObject.Properties[$Name]
+    if ($null -eq $property -or [string]::IsNullOrWhiteSpace([string]$property.Value)) {
+        return $Fallback
+    }
+    return [string]$property.Value
+}
 
 $defaults = [ordered]@{
     OfficialPetsCompanionMode = $false
@@ -31,6 +46,7 @@ $defaults = [ordered]@{
     WindowChangeCommentCooldownMinutes = 2
     CommentBubbleSeconds = 14
     FollowCodexActivity = $true
+    FollowPointerWithPet = $true
     StayOnTop = $true
     UseFastMode = $false
 }
@@ -99,82 +115,87 @@ function Get-SettingsSchema {
         properties = [ordered]@{
             OfficialPetsCompanionMode = [ordered]@{
                 type = "boolean"
-                title = "Experimental official Pets mode (paused)"
-                description = "Compatibility mode retained for testing; standalone pet development is currently prioritized."
+                title = (Get-UiText "OfficialPetsTitle" "Experimental official Pets mode")
+                description = (Get-UiText "OfficialPetsDescription" "Retained for compatibility testing; standalone pet development is prioritized.")
             }
             PetHidden = [ordered]@{
                 type = "boolean"
-                title = "Hide standalone pet"
-                description = "Keep the Windows helper running but hide its standalone pet window until the show/hide shortcut is pressed."
+                title = (Get-UiText "HidePetTitle" "Hide desktop pet")
+                description = (Get-UiText "HidePetDescription" "Keep the helper running but hide the pet until the show/hide shortcut is pressed.")
             }
             HotKey = [ordered]@{
                 type = "string"
-                title = "Selected-text shortcut"
-                description = "A Windows global shortcut such as Ctrl+Alt+Q."
+                title = (Get-UiText "SelectionHotKeyTitle" "Selected-text shortcut")
+                description = (Get-UiText "SelectionHotKeyDescription" "A Windows global shortcut such as Ctrl+Alt+Q.")
                 minLength = 3
                 maxLength = 64
                 pattern = "^(?=.*\\+)(?:(?:Ctrl|Alt|Shift|Win)\\+)+(?:[A-Za-z0-9]|F(?:[1-9]|1[0-2])|Space|Enter|Tab|Escape|Delete|Insert|Home|End|PageUp|PageDown|Up|Down|Left|Right)$"
             }
             OcrHotKey = [ordered]@{
                 type = "string"
-                title = "OCR region shortcut"
-                description = "Freeze the desktop, drag a region, and ask Codex to recognize and explain it."
+                title = (Get-UiText "OcrHotKeyTitle" "OCR region shortcut")
+                description = (Get-UiText "OcrHotKeyDescription" "Freeze the desktop, drag a region, and ask Codex to recognize and explain it.")
                 minLength = 3
                 maxLength = 64
                 pattern = "^(?=.*\\+)(?:(?:Ctrl|Alt|Shift|Win)\\+)+(?:[A-Za-z0-9]|F(?:[1-9]|1[0-2])|Space|Enter|Tab|Escape|Delete|Insert|Home|End|PageUp|PageDown|Up|Down|Left|Right)$"
             }
             TogglePetHotKey = [ordered]@{
                 type = "string"
-                title = "Show/hide pet shortcut"
-                description = "A Windows global shortcut such as Ctrl+Alt+H."
+                title = (Get-UiText "ToggleHotKeyTitle" "Show/hide shortcut")
+                description = (Get-UiText "ToggleHotKeyDescription" "Remains available while the pet is hidden, for example Ctrl+Alt+H.")
                 minLength = 3
                 maxLength = 64
                 pattern = "^(?=.*\\+)(?:(?:Ctrl|Alt|Shift|Win)\\+)+(?:[A-Za-z0-9]|F(?:[1-9]|1[0-2])|Space|Enter|Tab|Escape|Delete|Insert|Home|End|PageUp|PageDown|Up|Down|Left|Right)$"
             }
             ScreenWatchingEnabled = [ordered]@{
                 type = "boolean"
-                title = "Periodic screen comments"
-                description = "Periodically capture the current displays and show one privacy-aware pet comment. Off by default."
+                title = (Get-UiText "PeriodicCommentsTitle" "Periodic screen comments")
+                description = (Get-UiText "PeriodicCommentsDescription" "Capture the displays at an interval and show a separate comment bubble. Off by default.")
             }
             ScreenWatchingIntervalMinutes = [ordered]@{
                 type = "integer"
-                title = "Comment interval (minutes)"
-                description = "Used only when periodic screen comments are enabled."
+                title = (Get-UiText "PeriodicIntervalTitle" "Periodic comment interval (minutes)")
+                description = (Get-UiText "PeriodicIntervalDescription" "Used only when periodic screen comments are enabled.")
                 minimum = 1
                 maximum = 240
             }
             WindowChangeCommentsEnabled = [ordered]@{
                 type = "boolean"
-                title = "Comment after switching windows"
-                description = "After a new window or page stays active briefly, capture one screenshot and comment. Off by default."
+                title = (Get-UiText "WindowCommentsTitle" "Comment after switching windows")
+                description = (Get-UiText "WindowCommentsDescription" "Capture and comment after a new window or page remains active. Off by default.")
             }
             WindowChangeCommentCooldownMinutes = [ordered]@{
                 type = "integer"
-                title = "Window comment cooldown (minutes)"
-                description = "Minimum time between automatic comments triggered by window or page changes."
+                title = (Get-UiText "WindowCooldownTitle" "Window comment cooldown (minutes)")
+                description = (Get-UiText "WindowCooldownDescription" "Minimum time between comments triggered by window or page changes.")
                 minimum = 1
                 maximum = 60
             }
             CommentBubbleSeconds = [ordered]@{
                 type = "integer"
-                title = "Comment bubble duration (seconds)"
-                description = "How long a screen comment remains visible before it closes automatically."
+                title = (Get-UiText "BubbleDurationTitle" "Comment bubble duration (seconds)")
+                description = (Get-UiText "BubbleDurationDescription" "How long the separate comment bubble remains visible.")
                 minimum = 4
                 maximum = 60
             }
             FollowCodexActivity = [ordered]@{
                 type = "boolean"
-                title = "Follow Codex activity"
-                description = "Animate the standalone pet from Codex lifecycle status metadata without reading chat content."
+                title = (Get-UiText "FollowActivityTitle" "Follow Codex activity")
+                description = (Get-UiText "FollowActivityDescription" "Animate from lifecycle status only, without reading prompts, answers, or chat history.")
+            }
+            FollowPointerWithPet = [ordered]@{
+                type = "boolean"
+                title = (Get-UiText "FollowPointerTitle" "Look toward the pointer")
+                description = (Get-UiText "FollowPointerDescription" "Use the 16 look-direction frames in v2 pet packs. Other packs are ignored safely.")
             }
             StayOnTop = [ordered]@{
                 type = "boolean"
-                title = "Keep standalone pet on top"
+                title = (Get-UiText "StayOnTopTitle" "Keep desktop pet on top")
             }
             UseFastMode = [ordered]@{
                 type = "boolean"
-                title = "Use Fast mode"
-                description = "Faster supported-model responses with higher plan usage."
+                title = (Get-UiText "FastModeTitle" "Use Fast mode")
+                description = (Get-UiText "FastModeDescription" "Faster supported-model responses with higher plan usage.")
             }
         }
         required = @(
@@ -189,6 +210,7 @@ function Get-SettingsSchema {
             "WindowChangeCommentCooldownMinutes",
             "CommentBubbleSeconds",
             "FollowCodexActivity",
+            "FollowPointerWithPet",
             "StayOnTop",
             "UseFastMode"
         )
@@ -199,43 +221,44 @@ function Get-SettingsLayout {
     return @(
         [ordered]@{
             kind = "group"
-            title = "Interaction"
-            items = @(
-                [ordered]@{ kind = "property"; property = "OfficialPetsCompanionMode" },
-                [ordered]@{ kind = "property"; property = "HotKey" },
-                [ordered]@{ kind = "property"; property = "OcrHotKey" }
-            )
-        },
-        [ordered]@{
-            kind = "group"
-            title = "Visibility"
+            title = (Get-UiText "QuickControlsGroup" "Quick controls")
             items = @(
                 [ordered]@{ kind = "property"; property = "PetHidden" },
-                [ordered]@{ kind = "property"; property = "TogglePetHotKey" },
                 [ordered]@{ kind = "property"; property = "FollowCodexActivity" },
+                [ordered]@{ kind = "property"; property = "FollowPointerWithPet" },
+                [ordered]@{ kind = "property"; property = "ScreenWatchingEnabled" },
+                [ordered]@{ kind = "property"; property = "WindowChangeCommentsEnabled" },
                 [ordered]@{ kind = "property"; property = "StayOnTop" }
             )
         },
         [ordered]@{
             kind = "group"
-            title = "Automatic comments"
+            title = (Get-UiText "ShortcutsGroup" "Shortcuts")
             items = @(
-                [ordered]@{ kind = "property"; property = "ScreenWatchingEnabled" },
+                [ordered]@{ kind = "property"; property = "HotKey" },
+                [ordered]@{ kind = "property"; property = "OcrHotKey" },
+                [ordered]@{ kind = "property"; property = "TogglePetHotKey" }
+            )
+        },
+        [ordered]@{
+            kind = "group"
+            title = (Get-UiText "CommentTimingGroup" "Screen comment timing")
+            items = @(
                 [ordered]@{ kind = "property"; property = "ScreenWatchingIntervalMinutes" },
-                [ordered]@{ kind = "property"; property = "WindowChangeCommentsEnabled" },
                 [ordered]@{ kind = "property"; property = "WindowChangeCommentCooldownMinutes" },
                 [ordered]@{ kind = "property"; property = "CommentBubbleSeconds" }
             )
         },
         [ordered]@{
             kind = "group"
-            title = "Appearance and performance"
+            title = (Get-UiText "PerformanceGroup" "Performance and experiments")
             items = @(
                 [ordered]@{ kind = "property"; property = "UseFastMode" },
+                [ordered]@{ kind = "property"; property = "OfficialPetsCompanionMode" },
                 [ordered]@{
                     kind = "tool"
                     tool = "pet.restart"
-                    description = "Restart the installed helper to apply saved settings."
+                    description = (Get-UiText "RestartDescription" "Restart the installed pet to apply saved settings immediately.")
                 }
             )
         }
@@ -307,6 +330,9 @@ function Convert-SettingUpdates([object]$SetObject) {
             "FollowCodexActivity" {
                 $updates[$property.Name] = Convert-StrictBoolean $property.Value $property.Name
             }
+            "FollowPointerWithPet" {
+                $updates[$property.Name] = Convert-StrictBoolean $property.Value $property.Name
+            }
             "UseFastMode" {
                 $updates[$property.Name] = Convert-StrictBoolean $property.Value $property.Name
             }
@@ -368,16 +394,16 @@ function Get-ToolDefinitions {
     return @(
         [ordered]@{
             name = "settings.read"
-            title = "Read desktop pet settings"
-            description = "Read the native Windows desktop pet settings used by the plugin details page."
+            title = (Get-UiText "ReadSettingsTitle" "Read desktop pet settings")
+            description = (Get-UiText "ReadSettingsDescription" "Read the native Windows desktop pet settings used by the plugin details page.")
             inputSchema = [ordered]@{ type = "object"; additionalProperties = $false }
             outputSchema = $readOutputSchema
             annotations = [ordered]@{ readOnlyHint = $true }
         },
         [ordered]@{
             name = "settings.update"
-            title = "Update desktop pet settings"
-            description = "Persist changed Windows desktop pet settings. Restart the helper to apply them."
+            title = (Get-UiText "UpdateSettingsTitle" "Update desktop pet settings")
+            description = (Get-UiText "UpdateSettingsDescription" "Persist changed Windows desktop pet settings and restart the helper to apply them.")
             inputSchema = [ordered]@{
                 type = "object"
                 properties = [ordered]@{
@@ -399,12 +425,34 @@ function Get-ToolDefinitions {
         },
         [ordered]@{
             name = "pet.restart"
-            title = "Restart desktop pet"
-            description = "Restart the installed Windows helper so saved settings take effect."
+            title = (Get-UiText "RestartTitle" "Restart desktop pet")
+            description = (Get-UiText "RestartDescription" "Restart the installed Windows helper so saved settings take effect.")
             inputSchema = [ordered]@{ type = "object"; additionalProperties = $false }
             annotations = [ordered]@{ destructiveHint = $false }
         }
     )
+}
+
+function Restart-InstalledPet([bool]$RequireInstalled = $true) {
+    if (-not [string]::IsNullOrWhiteSpace($TestSettingsDirectory)) {
+        return
+    }
+    if (-not (Test-Path -LiteralPath $installedExe -PathType Leaf)) {
+        if ($RequireInstalled) {
+            throw "CodexDesktopPet.exe is not installed at $installedExe"
+        }
+        return
+    }
+    $installedFullPath = [IO.Path]::GetFullPath($installedExe)
+    Get-Process -Name "CodexDesktopPet" -ErrorAction SilentlyContinue |
+        Where-Object {
+            try {
+                [IO.Path]::GetFullPath($_.Path) -eq $installedFullPath
+            } catch { $false }
+        } |
+        Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Milliseconds 250
+    Start-Process -FilePath $installedExe -WindowStyle Hidden
 }
 
 function Invoke-Tool([string]$Name, [object]$Arguments) {
@@ -418,30 +466,19 @@ function Invoke-Tool([string]$Name, [object]$Arguments) {
             $state = Read-SettingsState
             Write-SettingsState $state.Raw $updates
             $saved = (Read-SettingsState).Values
+            Restart-InstalledPet $false
             return [ordered]@{
-                content = @([ordered]@{
-                    type = "text"
-                    text = "Settings saved. Restart the desktop pet to apply them."
-                })
+                content = @()
                 structuredContent = [ordered]@{ values = $saved }
             }
         }
         "pet.restart" {
-            if (-not (Test-Path -LiteralPath $installedExe -PathType Leaf)) {
-                throw "CodexDesktopPet.exe is not installed at $installedExe"
-            }
-            $installedFullPath = [IO.Path]::GetFullPath($installedExe)
-            Get-Process -Name "CodexDesktopPet" -ErrorAction SilentlyContinue |
-                Where-Object {
-                    try {
-                        [IO.Path]::GetFullPath($_.Path) -eq $installedFullPath
-                    } catch { $false }
-                } |
-                Stop-Process -Force -ErrorAction SilentlyContinue
-            Start-Sleep -Milliseconds 250
-            Start-Process -FilePath $installedExe -WindowStyle Hidden
+            Restart-InstalledPet
             return [ordered]@{
-                content = @([ordered]@{ type = "text"; text = "Desktop pet restarted." })
+                content = @([ordered]@{
+                    type = "text"
+                    text = (Get-UiText "RestartedMessage" "Desktop pet restarted.")
+                })
             }
         }
         default { throw "Unknown tool: $Name" }
@@ -467,7 +504,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     _meta = [ordered]@{
                         "io.modelcontextprotocol/serverInfo" = [ordered]@{
                             name = "codex-desktop-pet-settings"
-                            version = "0.8.0"
+                            version = "0.9.0"
                         }
                     }
                     capabilities = [ordered]@{
@@ -484,7 +521,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     protocolVersion = $protocolVersion
                     serverInfo = [ordered]@{
                         name = "codex-desktop-pet-settings"
-                        version = "0.8.0"
+                        version = "0.9.0"
                     }
                     capabilities = [ordered]@{
                         tools = [ordered]@{ listChanged = $false }
