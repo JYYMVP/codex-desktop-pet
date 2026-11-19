@@ -14,11 +14,14 @@ internal sealed class AppSettings
     public string ReasoningEffort { get; set; } = "none";
     public bool UseFastMode { get; set; }
     public string HotKey { get; set; } = HotKeyGesture.DefaultValue;
+    public string OcrHotKey { get; set; } = "Ctrl+Alt+R";
     public string PetPackPath { get; set; } = string.Empty;
     public Dictionary<string, string> PetConversationThreadIds { get; set; } =
         new(StringComparer.OrdinalIgnoreCase);
     public bool ScreenWatchingEnabled { get; set; }
     public int ScreenWatchingIntervalMinutes { get; set; } = 10;
+    public bool WindowChangeCommentsEnabled { get; set; }
+    public int WindowChangeCommentCooldownMinutes { get; set; } = 2;
     public bool StayOnTop { get; set; } = true;
 
     public static string SettingsPath => Path.Combine(
@@ -49,6 +52,12 @@ internal sealed class AppSettings
                 loaded.HotKey = HotKeyGesture.DefaultValue;
             else
                 loaded.HotKey = hotKey.DisplayName;
+            if (!HotKeyGesture.TryParse(loaded.OcrHotKey, out var ocrHotKey, out _) ||
+                string.Equals(ocrHotKey.DisplayName, loaded.HotKey,
+                    StringComparison.OrdinalIgnoreCase))
+                loaded.OcrHotKey = "Ctrl+Alt+R";
+            else
+                loaded.OcrHotKey = ocrHotKey.DisplayName;
             // `minimal` is rejected by several Codex models (including
             // gpt-5.6-sol) after expensive transport retries. `none` is the
             // model-supported no-reasoning fast path.
@@ -57,6 +66,8 @@ internal sealed class AppSettings
             loaded.PetConversationThreadIds ??= new(StringComparer.OrdinalIgnoreCase);
             loaded.ScreenWatchingIntervalMinutes = Math.Clamp(
                 loaded.ScreenWatchingIntervalMinutes, 1, 240);
+            loaded.WindowChangeCommentCooldownMinutes = Math.Clamp(
+                loaded.WindowChangeCommentCooldownMinutes, 1, 60);
             loaded.Save();
             return loaded;
         }

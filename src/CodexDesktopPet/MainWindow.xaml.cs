@@ -14,6 +14,8 @@ namespace CodexDesktopPet;
 
 public partial class MainWindow : Window
 {
+    private const int SelectionHotKeyId = 0xC0DE;
+    private const int OcrHotKeyId = 0xC0DF;
     private readonly AppSettings _settings = AppSettings.Load();
     private readonly SelectionCaptureService _selectionCapture = new();
     private readonly CodexAppServerService _codex;
@@ -21,13 +23,21 @@ public partial class MainWindow : Window
     private readonly PixelPetController _petController;
     private readonly ScreenCaptureService _screenCapture = new();
     private readonly DispatcherTimer _screenWatchTimer = new();
+    private readonly DispatcherTimer _windowWatchTimer = new();
     private GlobalHotKeyManager? _hotKey;
+    private GlobalHotKeyManager? _ocrHotKey;
     private Forms.NotifyIcon? _trayIcon;
     private CancellationTokenSource? _requestCancellation;
     private bool _allowClose;
     private bool _busy;
+    private string _answerMarkdown =
+        "我已经就位。选中文字后按 Ctrl+Alt+Q，我会给出简要回答。";
     private System.Windows.Point? _petPressPosition;
     private bool _petDragged;
+    private string? _lastForegroundIdentity;
+    private string? _pendingForegroundIdentity;
+    private DateTime _pendingForegroundSinceUtc;
+    private DateTime _lastWindowCommentUtc = DateTime.MinValue;
 
     public MainWindow()
     {
@@ -35,7 +45,11 @@ public partial class MainWindow : Window
         _codex = new CodexAppServerService(_settings);
         _usage = new CodexUsageService(_settings);
         _petController = new PixelPetController(PetImage, _settings.PetPackPath);
-        _screenWatchTimer.Tick += async (_, _) => await LookAtScreenAsync(automatic: true);
+        _screenWatchTimer.Tick += async (_, _) =>
+            await LookAtScreenAsync(ScreenCommentTrigger.Periodic);
+        _windowWatchTimer.Interval = TimeSpan.FromMilliseconds(750);
+        _windowWatchTimer.Tick += async (_, _) => await CheckForegroundWindowAsync();
+        SetAnswerMarkdown(_answerMarkdown);
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -51,6 +65,7 @@ public partial class MainWindow : Window
         SetPetState(PetState.Idle);
         StartIdleAnimation();
         ConfigureScreenWatching();
+        ConfigureWindowChangeComments();
 
         try { RegisterConfiguredHotKey(); }
         catch (Exception ex)
@@ -98,11 +113,20 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void OcrHotKey_Pressed(object? sender, EventArgs e) =>
+        await RecognizeOcrRegionAsync();
+
     private void ShowMessage(string message, PetState state)
     {
-        AnswerText.Text = message;
+        SetAnswerMarkdown(message);
         AnswerPanel.Visibility = Visibility.Visible;
         SetPetState(state);
+    }
+
+    private void SetAnswerMarkdown(string markdown)
+    {
+        _answerMarkdown = markdown ?? string.Empty;
+        MarkdownRenderer.Render(AnswerText, _answerMarkdown);
     }
 
     private void SetPetState(PetState state)
@@ -159,10 +183,12 @@ public partial class MainWindow : Window
     {
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("显示桌宠", null, (_, _) => ShowFromTray());
+        menu.Items.Add($"OCR 框选识别（{CurrentOcrHotKey.DisplayName}）", null,
+            async (_, _) => await RecognizeOcrRegionAsync());
         menu.Items.Add("查看 Codex 套餐额度", null,
             async (_, _) => await ShowCodexUsageAsync());
         menu.Items.Add("看一眼屏幕并吐槽", null,
-            async (_, _) => await LookAtScreenAsync(automatic: false));
+            async (_, _) => await LookAtScreenAsync(ScreenCommentTrigger.Manual));
         menu.Items.Add("在 Codex 中打开宠物对话", null, (_, _) => OpenConversation());
         menu.Items.Add("新建宠物对话", null, (_, _) => ClearContext());
         menu.Items.Add("宠物库…", null, (_, _) => OpenPetLibrary());
@@ -202,10 +228,74 @@ public partial class MainWindow : Window
         return message;
     }
 
+    private async void OcrRegion_Click(object sender, RoutedEventArgs e) =>
+        await RecognizeOcrRegionAsync();
+
+    private async Task RecognizeOcrRegionAsync()
+    {
+        if (_busy)
+            return;
+
+        _busy = true;
+        string? snapshotPath = null;
+        string? regionPath = null;
+        var wasVisible = IsVisible;
+        try
+        {
+            if (wasVisible)
+            {
+                Hide();
+                await Task.Delay(140);
+            }
+
+            snapshotPath = _screenCapture.CaptureDesktopSnapshot();
+            var selector = new OcrRegionSelectionWindow(snapshotPath);
+            if (selector.ShowDialog() != true)
+            {
+                AppLog.Write("OCR region selection cancelled.");
+                return;
+            }
+
+            regionPath = _screenCapture.CropSnapshot(snapshotPath,
+                selector.NormalizedSelection);
+            ScreenCaptureService.DeleteCapture(snapshotPath);
+            snapshotPath = null;
+            AppLog.Write("OCR region captured; starting Codex image request.");
+
+            Show();
+            WindowState = WindowState.Normal;
+            AnswerPanel.Visibility = Visibility.Visible;
+            SetAnswerMarkdown("正在识别框选区域…");
+            SetPetState(PetState.Thinking);
+            _requestCancellation = new CancellationTokenSource();
+            var answer = await _codex.AskAboutOcrRegionAsync(regionPath,
+                CurrentConversationKey, _requestCancellation.Token);
+            ShowMessage(answer, PetState.Ready);
+            AppLog.Write($"OCR region request completed. AnswerLength={answer.Length}");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write($"OCR region request failed: {ex}");
+            if (!IsVisible)
+                Show();
+            ShowMessage(FriendlyError(ex), PetState.Error);
+        }
+        finally
+        {
+            ScreenCaptureService.DeleteCapture(snapshotPath);
+            ScreenCaptureService.DeleteCapture(regionPath);
+            _requestCancellation?.Dispose();
+            _requestCancellation = null;
+            _busy = false;
+            if (wasVisible && !IsVisible)
+                Show();
+        }
+    }
+
     private void CopyAnswer_Click(object sender, RoutedEventArgs e)
     {
-        if (!string.IsNullOrWhiteSpace(AnswerText.Text))
-            System.Windows.Clipboard.SetText(AnswerText.Text);
+        if (!string.IsNullOrWhiteSpace(_answerMarkdown))
+            System.Windows.Clipboard.SetText(_answerMarkdown);
     }
 
     private void HideAnswer_Click(object sender, RoutedEventArgs e) =>
@@ -221,7 +311,7 @@ public partial class MainWindow : Window
 
         _busy = true;
         AnswerPanel.Visibility = Visibility.Visible;
-        AnswerText.Text = "正在查询 Codex 套餐额度…";
+        SetAnswerMarkdown("正在查询 Codex 套餐额度…");
         SetPetState(PetState.Thinking);
         AppLog.Write("Starting Codex plan usage query.");
 
@@ -355,6 +445,7 @@ public partial class MainWindow : Window
     {
         var wasTopmost = Topmost;
         var previousHotKey = _settings.HotKey;
+        var previousOcrHotKey = _settings.OcrHotKey;
         Topmost = false;
         var dialog = new SettingsWindow(_settings) { Owner = this, Topmost = true };
         if (dialog.ShowDialog() == true)
@@ -367,6 +458,7 @@ public partial class MainWindow : Window
             catch (Exception ex)
             {
                 _settings.HotKey = previousHotKey;
+                _settings.OcrHotKey = previousOcrHotKey;
                 _settings.Save();
                 try { RegisterConfiguredHotKey(); } catch { }
                 UpdateHotKeyPresentation();
@@ -377,6 +469,7 @@ public partial class MainWindow : Window
             UpdateHotKeyPresentation();
             _petController.Reload(_settings.PetPackPath);
             ConfigureScreenWatching();
+            ConfigureWindowChangeComments();
             UpdateContextHint();
             ShowMessage("设置已保存并应用。", PetState.Ready);
             AppLog.Write("Settings saved and applied.");
@@ -389,6 +482,9 @@ public partial class MainWindow : Window
 
     private HotKeyGesture CurrentHotKey =>
         HotKeyGesture.ParseOrDefault(_settings.HotKey);
+
+    private HotKeyGesture CurrentOcrHotKey =>
+        HotKeyGesture.ParseOrDefault(_settings.OcrHotKey);
 
     private string CurrentConversationKey
     {
@@ -413,11 +509,14 @@ public partial class MainWindow : Window
     }
 
     private async void LookAtScreen_Click(object sender, RoutedEventArgs e) =>
-        await LookAtScreenAsync(automatic: false);
+        await LookAtScreenAsync(ScreenCommentTrigger.Manual);
 
-    private async Task LookAtScreenAsync(bool automatic)
+    private async Task LookAtScreenAsync(ScreenCommentTrigger trigger)
     {
-        if (_busy || automatic && !_settings.ScreenWatchingEnabled)
+        var automatic = trigger != ScreenCommentTrigger.Manual;
+        if (_busy ||
+            trigger == ScreenCommentTrigger.Periodic && !_settings.ScreenWatchingEnabled ||
+            trigger == ScreenCommentTrigger.WindowChange && !_settings.WindowChangeCommentsEnabled)
             return;
 
         _busy = true;
@@ -436,13 +535,15 @@ public partial class MainWindow : Window
             if (wasVisible)
                 Show();
             AnswerPanel.Visibility = Visibility.Visible;
-            AnswerText.Text = "正在想一句桌面吐槽…";
+            SetAnswerMarkdown("正在想一句桌面吐槽…");
             SetPetState(PetState.Thinking);
             _requestCancellation = new CancellationTokenSource();
             var comment = await _codex.CommentOnScreenAsync(capturePath,
-                CurrentConversationKey, _requestCancellation.Token);
+                CurrentConversationKey,
+                triggeredByWindowChange: trigger == ScreenCommentTrigger.WindowChange,
+                cancellationToken: _requestCancellation.Token);
             ShowMessage(comment, PetState.Ready);
-            AppLog.Write($"Screen comment completed. Automatic={automatic}");
+            AppLog.Write($"Screen comment completed. Trigger={trigger}");
         }
         catch (Exception ex)
         {
@@ -461,6 +562,59 @@ public partial class MainWindow : Window
             _requestCancellation = null;
             _busy = false;
         }
+    }
+
+    private void ConfigureWindowChangeComments()
+    {
+        _windowWatchTimer.Stop();
+        var current = ForegroundWindowService.GetCurrent();
+        _lastForegroundIdentity = current?.Identity;
+        _pendingForegroundIdentity = null;
+        if (_settings.WindowChangeCommentsEnabled)
+            _windowWatchTimer.Start();
+        AppLog.Write($"Window change comments configured. " +
+                     $"Enabled={_settings.WindowChangeCommentsEnabled}; " +
+                     $"CooldownMinutes={_settings.WindowChangeCommentCooldownMinutes}");
+    }
+
+    private async Task CheckForegroundWindowAsync()
+    {
+        if (!_settings.WindowChangeCommentsEnabled || _busy)
+            return;
+
+        var current = ForegroundWindowService.GetCurrent();
+        if (current is null || current.ProcessId == Environment.ProcessId)
+            return;
+        if (string.Equals(current.Identity, _lastForegroundIdentity, StringComparison.Ordinal))
+        {
+            _pendingForegroundIdentity = null;
+            return;
+        }
+
+        if (!string.Equals(current.Identity, _pendingForegroundIdentity, StringComparison.Ordinal))
+        {
+            _pendingForegroundIdentity = current.Identity;
+            _pendingForegroundSinceUtc = DateTime.UtcNow;
+            return;
+        }
+
+        if (DateTime.UtcNow - _pendingForegroundSinceUtc < TimeSpan.FromMilliseconds(1500))
+            return;
+
+        _lastForegroundIdentity = current.Identity;
+        _pendingForegroundIdentity = null;
+        var cooldown = TimeSpan.FromMinutes(
+            Math.Clamp(_settings.WindowChangeCommentCooldownMinutes, 1, 60));
+        if (DateTime.UtcNow - _lastWindowCommentUtc < cooldown)
+        {
+            AppLog.Write($"Window change comment skipped by cooldown. " +
+                         $"Process={current.ProcessName}");
+            return;
+        }
+
+        _lastWindowCommentUtc = DateTime.UtcNow;
+        AppLog.Write($"Stable foreground window change detected. Process={current.ProcessName}");
+        await LookAtScreenAsync(ScreenCommentTrigger.WindowChange);
     }
 
     private void OpenConversation_Click(object sender, RoutedEventArgs e) => OpenConversation();
@@ -491,22 +645,40 @@ public partial class MainWindow : Window
     private void RegisterConfiguredHotKey()
     {
         var gesture = CurrentHotKey;
+        var ocrGesture = CurrentOcrHotKey;
         _hotKey?.Dispose();
         _hotKey = null;
+        _ocrHotKey?.Dispose();
+        _ocrHotKey = null;
 
-        var hotKey = new GlobalHotKeyManager(this, gesture.Modifiers, gesture.Key,
-            gesture.DisplayName);
+        var hotKey = new GlobalHotKeyManager(this, SelectionHotKeyId,
+            gesture.Modifiers, gesture.Key, gesture.DisplayName);
         hotKey.Pressed += HotKey_Pressed;
         _hotKey = hotKey;
-        AppLog.Write($"Global hotkey {gesture.DisplayName} registered successfully.");
+
+        try
+        {
+            var ocrHotKey = new GlobalHotKeyManager(this, OcrHotKeyId,
+                ocrGesture.Modifiers, ocrGesture.Key, ocrGesture.DisplayName);
+            ocrHotKey.Pressed += OcrHotKey_Pressed;
+            _ocrHotKey = ocrHotKey;
+            AppLog.Write($"Global hotkeys registered. Selection={gesture.DisplayName}; " +
+                         $"OCR={ocrGesture.DisplayName}");
+        }
+        catch
+        {
+            _ocrHotKey?.Dispose();
+            _ocrHotKey = null;
+            throw;
+        }
     }
 
     private void UpdateHotKeyPresentation()
     {
         var displayName = CurrentHotKey.DisplayName;
         StatusText.Text = $"选中文字后按 {displayName}";
-        if (AnswerText.Text.StartsWith("我已经就位。", StringComparison.Ordinal))
-            AnswerText.Text = $"我已经就位。选中文字后按 {displayName}，我会给出简要回答。";
+        if (_answerMarkdown.StartsWith("我已经就位。", StringComparison.Ordinal))
+            SetAnswerMarkdown($"我已经就位。选中文字后按 {displayName}，我会给出简要回答。");
         if (_trayIcon is not null)
             _trayIcon.Text = $"Codex 桌宠 — {displayName}";
     }
@@ -569,9 +741,18 @@ public partial class MainWindow : Window
         AppLog.Write("Application closed.");
         _requestCancellation?.Cancel();
         _hotKey?.Dispose();
+        _ocrHotKey?.Dispose();
         _trayIcon?.Dispose();
         _screenWatchTimer.Stop();
+        _windowWatchTimer.Stop();
         _codex.Dispose();
         _petController.Dispose();
+    }
+
+    private enum ScreenCommentTrigger
+    {
+        Manual,
+        Periodic,
+        WindowChange
     }
 }
