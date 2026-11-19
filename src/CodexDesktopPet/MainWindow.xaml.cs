@@ -20,7 +20,11 @@ public partial class MainWindow : Window
     private readonly AppSettings _settings = AppSettings.Load();
     private readonly SelectionCaptureService _selectionCapture = new();
     private readonly OfficialPetsQuickChatService _officialPets = new();
-    private readonly OfficialPetsBubbleWindow _officialPetsBubble = new();
+    private readonly OfficialPetsBubbleWindow _officialPetsAnswerBubble = new();
+    private readonly OfficialPetsBubbleWindow _officialPetsCommentBubble = new()
+    {
+        AnchorVerticalOffset = -210
+    };
     private readonly CodexAppServerService _codex;
     private readonly CodexUsageService _usage;
     private readonly PixelPetController _petController;
@@ -114,13 +118,26 @@ public partial class MainWindow : Window
 
             if (_settings.OfficialPetsCompanionMode)
             {
-                await _officialPets.PrefillSelectionQuestionAsync(
-                    selectedText,
-                    _settings.Language,
-                    _settings.MaximumSelectionCharacters);
-                AppLog.Write("Selection inserted into official Pets Quick Chat; awaiting user confirmation.");
-                ShowTrayNotification("已填入官方 Pets Quick Chat，检查后按 Enter 发送。",
-                    Forms.ToolTipIcon.Info);
+                if (_settings.OfficialPetsDirectAnswers)
+                {
+                    _officialPetsAnswerBubble.ShowWorking();
+                    _requestCancellation = new CancellationTokenSource();
+                    AppLog.Write("Starting direct official Pets selection answer.");
+                    var answer = await _codex.AskAsync(selectedText, isSelection: true,
+                        "official-pets:selection", _requestCancellation.Token);
+                    _officialPetsAnswerBubble.ShowAnswer(answer);
+                    AppLog.Write($"Direct official Pets selection answer completed. AnswerLength={answer.Length}");
+                }
+                else
+                {
+                    await _officialPets.PrefillSelectionQuestionAsync(
+                        selectedText,
+                        _settings.Language,
+                        _settings.MaximumSelectionCharacters);
+                    AppLog.Write("Selection inserted into official Pets Quick Chat; awaiting user confirmation.");
+                    ShowTrayNotification("已填入官方 Pets Quick Chat，检查后按 Enter 发送。",
+                        Forms.ToolTipIcon.Info);
+                }
                 return;
             }
 
@@ -129,7 +146,10 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             AppLog.Write($"Request failed: {ex}");
-            NotifyOrShow(FriendlyError(ex), PetState.Error, Forms.ToolTipIcon.Error);
+            if (_settings.OfficialPetsCompanionMode && _settings.OfficialPetsDirectAnswers)
+                _officialPetsAnswerBubble.ShowAnswer(FriendlyError(ex), isError: true);
+            else
+                NotifyOrShow(FriendlyError(ex), PetState.Error, Forms.ToolTipIcon.Error);
         }
         finally
         {
@@ -327,7 +347,8 @@ public partial class MainWindow : Window
     {
         if (_settings.OfficialPetsCompanionMode)
         {
-            ShowTrayNotification("官方 Pets 增强模式正在使用独立的 Quick Chat。", Forms.ToolTipIcon.Info);
+            ShowTrayNotification("官方 Pets 增强模式已启用；该快捷键只控制独立桌宠。",
+                Forms.ToolTipIcon.Info);
             return;
         }
         if (IsVisible)
@@ -374,11 +395,14 @@ public partial class MainWindow : Window
         string? snapshotPath = null;
         string? regionPath = null;
         var wasVisible = IsVisible;
+        var answerBubbleWasVisible = _settings.OfficialPetsCompanionMode &&
+                                     _officialPetsAnswerBubble.IsBubbleVisible;
         try
         {
             if (_settings.OfficialPetsCompanionMode)
             {
-                _officialPetsBubble.HideBubble();
+                _officialPetsAnswerBubble.HideBubble();
+                _officialPetsCommentBubble.HideBubble();
                 await Task.Delay(80);
             }
             if (wasVisible)
@@ -392,6 +416,8 @@ public partial class MainWindow : Window
             if (selector.ShowDialog() != true)
             {
                 AppLog.Write("OCR region selection cancelled.");
+                if (answerBubbleWasVisible)
+                    _officialPetsAnswerBubble.RestoreBubble();
                 return;
             }
 
@@ -409,11 +435,13 @@ public partial class MainWindow : Window
                 SetAnswerMarkdown("正在识别框选区域…");
                 SetPetState(PetState.Thinking);
             }
+            else
+                _officialPetsAnswerBubble.ShowWorking();
             _requestCancellation = new CancellationTokenSource();
             var answer = await _codex.AskAboutOcrRegionAsync(regionPath,
                 CurrentConversationKey, _requestCancellation.Token);
             if (_settings.OfficialPetsCompanionMode)
-                _officialPetsBubble.ShowComment(answer);
+                _officialPetsAnswerBubble.ShowAnswer(answer);
             else
                 ShowMessage(answer, PetState.Ready);
             AppLog.Write($"OCR region request completed. AnswerLength={answer.Length}");
@@ -422,7 +450,7 @@ public partial class MainWindow : Window
         {
             AppLog.Write($"OCR region request failed: {ex}");
             if (_settings.OfficialPetsCompanionMode && !IsVisible)
-                ShowTrayNotification(FriendlyError(ex), Forms.ToolTipIcon.Error);
+                _officialPetsAnswerBubble.ShowAnswer(FriendlyError(ex), isError: true);
             else
             {
                 if (!IsVisible)
@@ -705,11 +733,14 @@ public partial class MainWindow : Window
         _busy = true;
         string? capturePath = null;
         var wasVisible = IsVisible;
+        var answerBubbleWasVisible = _settings.OfficialPetsCompanionMode &&
+                                     _officialPetsAnswerBubble.IsBubbleVisible;
         try
         {
             if (_settings.OfficialPetsCompanionMode)
             {
-                _officialPetsBubble.HideBubble();
+                _officialPetsAnswerBubble.HideBubble();
+                _officialPetsCommentBubble.HideBubble();
                 await Task.Delay(80);
             }
             if (!_settings.OfficialPetsCompanionMode)
@@ -723,6 +754,8 @@ public partial class MainWindow : Window
                 await Task.Delay(120);
             }
             capturePath = _screenCapture.CaptureDesktop();
+            if (answerBubbleWasVisible)
+                _officialPetsAnswerBubble.RestoreBubble();
             if (wasVisible)
                 Show();
             if (!_settings.OfficialPetsCompanionMode)
@@ -738,7 +771,7 @@ public partial class MainWindow : Window
                 triggeredByWindowChange: trigger == ScreenCommentTrigger.WindowChange,
                 cancellationToken: _requestCancellation.Token);
             if (_settings.OfficialPetsCompanionMode)
-                _officialPetsBubble.ShowComment(comment);
+                _officialPetsCommentBubble.ShowComment(comment);
             else
                 ShowCommentBubble(comment);
             AppLog.Write($"Screen comment completed. Trigger={trigger}");
@@ -755,6 +788,8 @@ public partial class MainWindow : Window
         }
         finally
         {
+            if (answerBubbleWasVisible && !_officialPetsAnswerBubble.IsBubbleVisible)
+                _officialPetsAnswerBubble.RestoreBubble();
             if (wasVisible && !IsVisible && !_settings.OfficialPetsCompanionMode)
                 Show();
             ScreenCaptureService.DeleteCapture(capturePath);
@@ -970,7 +1005,8 @@ public partial class MainWindow : Window
         _screenWatchTimer.Stop();
         _windowWatchTimer.Stop();
         _commentBubbleTimer.Stop();
-        _officialPetsBubble.Shutdown();
+        _officialPetsAnswerBubble.Shutdown();
+        _officialPetsCommentBubble.Shutdown();
         _codex.Dispose();
         _petController.Dispose();
     }

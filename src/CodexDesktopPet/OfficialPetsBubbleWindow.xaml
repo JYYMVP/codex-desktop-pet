@@ -1,27 +1,47 @@
 <Window x:Class="CodexDesktopPet.OfficialPetsBubbleWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Width="336" SizeToContent="Height" MaxHeight="220"
+        Width="360" SizeToContent="Height" MaxHeight="440"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize" ShowInTaskbar="False" ShowActivated="False"
         Topmost="True" Focusable="False">
-    <Border Margin="12" Padding="16,13" CornerRadius="18"
+    <Border x:Name="BubbleChrome" Margin="12" Padding="15,12" CornerRadius="18"
             Background="{StaticResource RaisedPanelBrush}"
-            BorderBrush="{StaticResource StrongBorderBrush}" BorderThickness="1"
-            Cursor="Hand" MouseLeftButtonDown="Bubble_MouseLeftButtonDown">
+            BorderBrush="{StaticResource StrongBorderBrush}" BorderThickness="1">
         <Border.Effect>
-            <DropShadowEffect BlurRadius="22" ShadowDepth="4" Opacity="0.22" />
+            <DropShadowEffect BlurRadius="22" ShadowDepth="4" Opacity="0.24" />
         </Border.Effect>
         <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <TextBlock x:Name="CommentText" TextWrapping="Wrap" FontSize="13"
-                       LineHeight="19" Foreground="{StaticResource TextBrush}" MaxHeight="160" />
-            <TextBlock Grid.Column="1" Text="×" Margin="12,-5,-4,0"
-                       FontSize="18" Foreground="{StaticResource SubtleTextBrush}"
-                       VerticalAlignment="Top" />
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Ellipse x:Name="KindDot" Width="7" Height="7" Margin="0,0,7,0"
+                         VerticalAlignment="Center" Fill="{StaticResource AccentBrush}" />
+                <TextBlock x:Name="KindLabel" Grid.Column="1" Text="问答"
+                           FontSize="11" FontWeight="SemiBold"
+                           Foreground="{StaticResource MutedTextBrush}"
+                           VerticalAlignment="Center" />
+                <Button x:Name="CopyButton" Grid.Column="2" Content="复制" Height="25"
+                        Margin="8,-4,4,-2" Padding="8,2" FontSize="11" Focusable="False"
+                        Click="CopyButton_Click" />
+                <Button Grid.Column="3" Content="×" Width="25" Height="25"
+                        Margin="0,-4,-5,-2" Padding="0" FontSize="16" Focusable="False"
+                        Style="{StaticResource IconButtonStyle}" Click="CloseButton_Click" />
+            </Grid>
+            <ScrollViewer Grid.Row="1" Margin="0,9,0,0" MaxHeight="330"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <TextBlock x:Name="MessageText" TextWrapping="Wrap" FontSize="13"
+                           LineHeight="19" Foreground="{StaticResource TextBrush}" />
+            </ScrollViewer>
         </Grid>
     </Border>
 </Window>

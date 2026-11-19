@@ -16,6 +16,84 @@ internal sealed class OfficialPetsQuickChatService
     private const uint KeyEventKeyUp = 0x0002;
     private string _lastOperation = "尚未触发官方 Pets Quick Chat。";
     private DateTimeOffset? _lastOperationAt;
+    private static readonly object ProcessCacheLock = new();
+    private static HashSet<uint> _trustedProcessIds = [];
+    private static DateTime _trustedProcessIdsExpireUtc = DateTime.MinValue;
+
+    internal static bool TryGetPetsAnchor(out System.Drawing.Rectangle anchor)
+    {
+        anchor = System.Drawing.Rectangle.Empty;
+        var trustedProcessIds = GetTrustedChatGptProcessIds();
+        if (trustedProcessIds.Count == 0)
+            return false;
+
+        var foregroundWindow = GetForegroundWindow();
+        long bestScore = long.MaxValue;
+        var bestBounds = System.Drawing.Rectangle.Empty;
+        EnumWindows((window, _) =>
+        {
+            if (!IsWindowVisible(window))
+                return true;
+            GetWindowThreadProcessId(window, out var processId);
+            if (!trustedProcessIds.Contains(processId) || !GetWindowRect(window, out var rect))
+                return true;
+
+            var width = rect.Right - rect.Left;
+            var height = rect.Bottom - rect.Top;
+            // The Windows app currently hosts floating Pets inside a larger
+            // transparent top-level window instead of exposing a pet-sized HWND.
+            // Keep full-screen app windows out, but accept the narrower overlay host.
+            if (width is < 90 or > 1600 || height is < 70 or > 1400)
+                return true;
+
+            var title = GetWindowTitle(window);
+            long score = (long)width * height;
+            if (title.Contains("Pet", StringComparison.OrdinalIgnoreCase))
+                score -= 2_000_000;
+            else if (ContainsProductName(title))
+                score -= 500_000;
+            if (window == foregroundWindow)
+                score -= 250_000;
+
+            if (score >= bestScore)
+                return true;
+            bestScore = score;
+            bestBounds = new System.Drawing.Rectangle(rect.Left, rect.Top, width, height);
+            return true;
+        }, IntPtr.Zero);
+
+        if (bestBounds.IsEmpty)
+            return false;
+        anchor = bestBounds;
+        return true;
+    }
+
+    private static HashSet<uint> GetTrustedChatGptProcessIds()
+    {
+        lock (ProcessCacheLock)
+        {
+            if (DateTime.UtcNow < _trustedProcessIdsExpireUtc)
+                return _trustedProcessIds;
+
+            var processIds = new HashSet<uint>();
+            foreach (var process in Process.GetProcessesByName("ChatGPT"))
+            {
+                using (process)
+                {
+                    try
+                    {
+                        var path = process.MainModule?.FileName;
+                        if (!string.IsNullOrWhiteSpace(path) && IsTrustedExecutablePath(path))
+                            processIds.Add((uint)process.Id);
+                    }
+                    catch { }
+                }
+            }
+            _trustedProcessIds = processIds;
+            _trustedProcessIdsExpireUtc = DateTime.UtcNow.AddSeconds(2);
+            return _trustedProcessIds;
+        }
+    }
 
     public async Task PrefillSelectionQuestionAsync(
         string selectedText,
@@ -247,6 +325,17 @@ internal sealed class OfficialPetsQuickChatService
     [DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
 
+    private delegate bool EnumWindowsProc(IntPtr window, IntPtr parameter);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr parameter);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr window);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr window, out NativeRect rectangle);
+
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
 
@@ -262,4 +351,13 @@ internal sealed class OfficialPetsQuickChatService
         byte scanCode,
         uint flags,
         UIntPtr extraInfo);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
 }

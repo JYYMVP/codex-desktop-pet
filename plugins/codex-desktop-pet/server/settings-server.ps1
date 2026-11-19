@@ -21,6 +21,7 @@ $installedExe = Join-Path $settingsDirectory "app\CodexDesktopPet.exe"
 
 $defaults = [ordered]@{
     OfficialPetsCompanionMode = $false
+    OfficialPetsDirectAnswers = $true
     PetHidden = $false
     HotKey = "Ctrl+Alt+Q"
     OcrHotKey = "Ctrl+Alt+R"
@@ -97,8 +98,13 @@ function Get-SettingsSchema {
         properties = [ordered]@{
             OfficialPetsCompanionMode = [ordered]@{
                 type = "boolean"
-                title = "Use official Pets Quick Chat"
-                description = "Hide the standalone pet, fill selected-text questions into official Pets for review, and keep OCR plus opt-in comments in a separate helper bubble."
+                title = "Use official Pets companion mode"
+                description = "Hide the standalone pet and add selected-text, OCR, and opt-in comment bubbles beside official Pets."
+            }
+            OfficialPetsDirectAnswers = [ordered]@{
+                type = "boolean"
+                title = "Show selected-text answers beside Pets"
+                description = "Answer selected text in a persistent helper bubble beside official Pets without opening Quick Chat. Turn off to prefill Quick Chat instead."
             }
             PetHidden = [ordered]@{
                 type = "boolean"
@@ -165,6 +171,7 @@ function Get-SettingsSchema {
         }
         required = @(
             "OfficialPetsCompanionMode",
+            "OfficialPetsDirectAnswers",
             "PetHidden",
             "HotKey",
             "OcrHotKey",
@@ -186,6 +193,7 @@ function Get-SettingsLayout {
             title = "Interaction"
             items = @(
                 [ordered]@{ kind = "property"; property = "OfficialPetsCompanionMode" },
+                [ordered]@{ kind = "property"; property = "OfficialPetsDirectAnswers" },
                 [ordered]@{ kind = "property"; property = "HotKey" },
                 [ordered]@{ kind = "property"; property = "OcrHotKey" }
             )
@@ -272,6 +280,9 @@ function Convert-SettingUpdates([object]$SetObject) {
         }
         switch ($property.Name) {
             "OfficialPetsCompanionMode" {
+                $updates[$property.Name] = Convert-StrictBoolean $property.Value $property.Name
+            }
+            "OfficialPetsDirectAnswers" {
                 $updates[$property.Name] = Convert-StrictBoolean $property.Value $property.Name
             }
             "PetHidden" {
@@ -442,7 +453,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     _meta = [ordered]@{
                         "io.modelcontextprotocol/serverInfo" = [ordered]@{
                             name = "codex-desktop-pet-settings"
-                            version = "0.7.0"
+                            version = "0.7.1"
                         }
                     }
                     capabilities = [ordered]@{
@@ -459,7 +470,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     protocolVersion = $protocolVersion
                     serverInfo = [ordered]@{
                         name = "codex-desktop-pet-settings"
-                        version = "0.7.0"
+                        version = "0.7.1"
                     }
                     capabilities = [ordered]@{
                         tools = [ordered]@{ listChanged = $false }

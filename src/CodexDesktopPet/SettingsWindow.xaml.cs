@@ -20,6 +20,7 @@ public partial class SettingsWindow : Window
         ReasoningEffortBox.SelectedValue = settings.ReasoningEffort;
         FastModeBox.IsChecked = settings.UseFastMode;
         OfficialPetsModeBox.IsChecked = settings.OfficialPetsCompanionMode;
+        OfficialPetsDirectAnswersBox.IsChecked = settings.OfficialPetsDirectAnswers;
         PetHiddenBox.IsChecked = settings.PetHidden;
         ScreenWatchingBox.IsChecked = settings.ScreenWatchingEnabled;
         ScreenIntervalBox.Text = settings.ScreenWatchingIntervalMinutes.ToString();
@@ -82,6 +83,7 @@ public partial class SettingsWindow : Window
         _settings.ReasoningEffort = reasoning;
         _settings.UseFastMode = FastModeBox.IsChecked == true;
         _settings.OfficialPetsCompanionMode = OfficialPetsModeBox.IsChecked == true;
+        _settings.OfficialPetsDirectAnswers = OfficialPetsDirectAnswersBox.IsChecked == true;
         _settings.PetHidden = PetHiddenBox.IsChecked == true;
         _settings.ScreenWatchingEnabled = ScreenWatchingBox.IsChecked == true;
         _settings.ScreenWatchingIntervalMinutes = screenInterval;
