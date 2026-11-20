@@ -27,6 +27,9 @@ internal sealed class AppSettings
     public int WindowChangeCommentCooldownMinutes { get; set; } = 2;
     public int CommentBubbleSeconds { get; set; } = 14;
     public bool FollowCodexActivity { get; set; } = true;
+    public bool BindLifetimeToCodex { get; set; } = true;
+    public int IdleActivityLevel { get; set; } = 1;
+    public bool ReduceMotion { get; set; }
     public bool FollowPointerWithPet { get; set; } = true;
     public bool StayOnTop { get; set; } = true;
 
@@ -88,6 +91,7 @@ internal sealed class AppSettings
             loaded.WindowChangeCommentCooldownMinutes = Math.Clamp(
                 loaded.WindowChangeCommentCooldownMinutes, 1, 60);
             loaded.CommentBubbleSeconds = Math.Clamp(loaded.CommentBubbleSeconds, 4, 60);
+            loaded.IdleActivityLevel = Math.Clamp(loaded.IdleActivityLevel, 0, 2);
             loaded.Save();
             return loaded;
         }

@@ -71,6 +71,7 @@
               HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,52"
               RenderTransformOrigin="0.5,0.5" Cursor="Hand"
               ToolTip="单击：快速提问&#x0a;拖动：移动桌宠&#x0a;显示/隐藏：Ctrl+Alt+H"
+              MouseEnter="PetBody_MouseEnter"
               MouseLeftButtonDown="PetBody_MouseLeftButtonDown"
               MouseLeftButtonUp="PetBody_MouseLeftButtonUp"
               MouseMove="PetBody_MouseMove">
@@ -81,6 +82,12 @@
                     <MenuItem x:Name="PetOcrMenuItem" Header="OCR 框选识别（Ctrl+Alt+R）" Click="OcrRegion_Click" />
                     <MenuItem Header="查看 Codex 套餐额度" Click="ShowUsage_Click" />
                     <MenuItem Header="看一眼屏幕并吐槽" Click="LookAtScreen_Click" />
+                    <MenuItem Header="互动动作">
+                        <MenuItem Header="挥手" Tag="Waving" Click="PlayPetAction_Click" />
+                        <MenuItem Header="跳一下" Tag="Jumping" Click="PlayPetAction_Click" />
+                        <MenuItem Header="向左跑" Tag="RunningLeft" Click="PlayPetAction_Click" />
+                        <MenuItem Header="向右跑" Tag="RunningRight" Click="PlayPetAction_Click" />
+                    </MenuItem>
                     <MenuItem Header="展开 / 收起回答" Click="ToggleAnswer_Click" />
                     <MenuItem Header="在 Codex 中打开宠物对话" Click="OpenConversation_Click" />
                     <MenuItem Header="新建宠物对话" Click="ClearContext_Click" />
@@ -88,7 +95,7 @@
                     <MenuItem Header="设置…" Click="OpenSettings_Click" />
                     <Separator />
                     <MenuItem x:Name="PetHideMenuItem" Header="隐藏桌宠（Ctrl+Alt+H）" Click="HidePet_Click" />
-                    <MenuItem Header="退出桌宠" Click="ExitMenu_Click" />
+                    <MenuItem Header="退出桌宠（下次提问自动重启）" Click="ExitMenu_Click" />
                 </ContextMenu>
             </Grid.ContextMenu>
             <Grid.RenderTransform>

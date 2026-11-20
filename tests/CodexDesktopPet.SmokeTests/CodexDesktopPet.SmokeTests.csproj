@@ -13,6 +13,9 @@
     <None Include="..\..\src\CodexDesktopPet\MainWindow.xaml"
           Link="MainWindow.xaml"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\plugins\codex-desktop-pet\hooks\hooks.json"
+          Link="hooks.json"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

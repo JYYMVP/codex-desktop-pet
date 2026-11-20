@@ -41,6 +41,9 @@ function Get-UiText([string]$Name, [string]$Fallback) {
 $defaults = [ordered]@{
     OfficialPetsCompanionMode = $false
     PetHidden = $false
+    BindLifetimeToCodex = $true
+    IdleActivityLevel = 1
+    ReduceMotion = $false
     HotKey = "Ctrl+Alt+Q"
     OcrHotKey = "Ctrl+Alt+R"
     TogglePetHotKey = "Ctrl+Alt+H"
@@ -127,6 +130,23 @@ function Get-SettingsSchema {
                 title = (Get-UiText "HidePetTitle" "Hide desktop pet")
                 description = (Get-UiText "HidePetDescription" "Keep the helper running but hide the pet until the show/hide shortcut is pressed.")
             }
+            BindLifetimeToCodex = [ordered]@{
+                type = "boolean"
+                title = (Get-UiText "BindLifetimeTitle" "Start and exit with Codex")
+                description = (Get-UiText "BindLifetimeDescription" "Start automatically from Codex hooks and exit after the trusted Codex desktop process closes.")
+            }
+            IdleActivityLevel = [ordered]@{
+                type = "integer"
+                title = (Get-UiText "IdleActivityTitle" "Idle activity")
+                description = (Get-UiText "IdleActivityDescription" "0 quiet, 1 standard, 2 lively; controls occasional idle gestures.")
+                minimum = 0
+                maximum = 2
+            }
+            ReduceMotion = [ordered]@{
+                type = "boolean"
+                title = (Get-UiText "ReduceMotionTitle" "Reduce motion")
+                description = (Get-UiText "ReduceMotionDescription" "Disable bobbing, pulsing, hover hops, and random idle gestures.")
+            }
             HotKey = [ordered]@{
                 type = "string"
                 title = (Get-UiText "SelectionHotKeyTitle" "Selected-text shortcut")
@@ -205,6 +225,9 @@ function Get-SettingsSchema {
         required = @(
             "OfficialPetsCompanionMode",
             "PetHidden",
+            "BindLifetimeToCodex",
+            "IdleActivityLevel",
+            "ReduceMotion",
             "HotKey",
             "OcrHotKey",
             "TogglePetHotKey",
@@ -228,6 +251,9 @@ function Get-SettingsLayout {
             title = (Get-UiText "QuickControlsGroup" "Quick controls")
             items = @(
                 [ordered]@{ kind = "property"; property = "PetHidden" },
+                [ordered]@{ kind = "property"; property = "BindLifetimeToCodex" },
+                [ordered]@{ kind = "property"; property = "IdleActivityLevel" },
+                [ordered]@{ kind = "property"; property = "ReduceMotion" },
                 [ordered]@{ kind = "property"; property = "FollowCodexActivity" },
                 [ordered]@{ kind = "property"; property = "FollowPointerWithPet" },
                 [ordered]@{ kind = "property"; property = "ScreenWatchingEnabled" },
@@ -332,6 +358,12 @@ function Convert-SettingUpdates([object]$SetObject) {
             "PetHidden" {
                 $updates[$property.Name] = Convert-StrictBoolean $property.Value $property.Name
             }
+            "BindLifetimeToCodex" {
+                $updates[$property.Name] = Convert-StrictBoolean $property.Value $property.Name
+            }
+            "ReduceMotion" {
+                $updates[$property.Name] = Convert-StrictBoolean $property.Value $property.Name
+            }
             "ScreenWatchingEnabled" {
                 $updates[$property.Name] = Convert-StrictBoolean $property.Value $property.Name
             }
@@ -376,6 +408,10 @@ function Convert-SettingUpdates([object]$SetObject) {
             "CommentBubbleSeconds" {
                 $updates[$property.Name] = Convert-StrictInteger `
                     $property.Value $property.Name 4 60
+            }
+            "IdleActivityLevel" {
+                $updates[$property.Name] = Convert-StrictInteger `
+                    $property.Value $property.Name 0 2
             }
         }
     }
@@ -564,7 +600,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     _meta = [ordered]@{
                         "io.modelcontextprotocol/serverInfo" = [ordered]@{
                             name = "codex-desktop-pet-settings"
-                            version = "0.10.0"
+                            version = "0.10.1"
                         }
                     }
                     capabilities = [ordered]@{
@@ -581,7 +617,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     protocolVersion = $protocolVersion
                     serverInfo = [ordered]@{
                         name = "codex-desktop-pet-settings"
-                        version = "0.10.0"
+                        version = "0.10.1"
                     }
                     capabilities = [ordered]@{
                         tools = [ordered]@{ listChanged = $false }

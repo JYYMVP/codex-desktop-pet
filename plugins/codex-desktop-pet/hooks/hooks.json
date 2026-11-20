@@ -5,12 +5,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/scripts/start-pet.ps1\"",
+            "command": "powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/scripts/start-pet.ps1\"",
             "statusMessage": "Starting Codex Desktop Pet"
           },
           {
             "type": "command",
-            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/hooks/pet-status.ps1\"",
+            "command": "powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/hooks/pet-status.ps1\"",
             "timeout": 3
           }
         ]
@@ -21,7 +21,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/hooks/pet-status.ps1\"",
+            "command": "powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/scripts/start-pet.ps1\"",
+            "statusMessage": "Ensuring Codex Desktop Pet is running"
+          },
+          {
+            "type": "command",
+            "command": "powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/hooks/pet-status.ps1\"",
             "timeout": 3
           }
         ]
@@ -32,7 +37,51 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/hooks/pet-status.ps1\"",
+            "command": "powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/hooks/pet-status.ps1\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/hooks/pet-status.ps1\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/hooks/pet-status.ps1\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/hooks/pet-status.ps1\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/hooks/pet-status.ps1\"",
             "timeout": 3
           }
         ]
@@ -43,7 +92,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/hooks/pet-status.ps1\"",
+            "command": "powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/hooks/pet-status.ps1\"",
             "timeout": 3
           }
         ]
@@ -54,7 +103,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/hooks/pet-status.ps1\"",
+            "command": "powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/hooks/pet-status.ps1\"",
             "timeout": 3
           }
         ]
@@ -65,7 +114,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/hooks/pet-status.ps1\"",
+            "command": "powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/hooks/pet-status.ps1\"",
             "timeout": 3
           }
         ]
@@ -76,7 +125,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/hooks/pet-status.ps1\"",
+            "command": "powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File \"${PLUGIN_ROOT}/hooks/pet-status.ps1\"",
             "timeout": 3
           }
         ]

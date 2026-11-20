@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Xml.Linq;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using CodexDesktopPet;
 using CodexDesktopPet.Models;
 using CodexDesktopPet.Services;
 
@@ -36,6 +37,11 @@ CheckActivity("running outranks blocked", CodexActivityState.Running,
 CheckActivity("input request outranks running", CodexActivityState.NeedsInput,
     [CodexActivityState.Running, CodexActivityState.NeedsInput]);
 CheckActivitySnapshotOrdering();
+CheckCodexDesktopPathValidation();
+CheckCodexLifetimeDecision();
+CheckActivityDescriptions();
+CheckPetInteractionMenu();
+CheckHookLifecycleContract();
 CheckComposerLayout();
 CheckAnimatedPetPackage();
 CheckGistShareLinkValidation();
@@ -52,7 +58,7 @@ if (failures.Count > 0)
     return 1;
 }
 
-Console.WriteLine("16 placement, activity, editor, package, and share-security smoke tests passed.");
+Console.WriteLine("21 placement, lifecycle, activity, interaction, editor, package, and share-security smoke tests passed.");
 return 0;
 
 void Check(string name, double expectedLeft, double expectedTop, Point actual)
@@ -105,6 +111,50 @@ void CheckComposerLayout()
         failures.Add("pet menu must expose a wired Windows voice-typing entry");
 }
 
+void CheckPetInteractionMenu()
+{
+    var document = XDocument.Load(Path.Combine(AppContext.BaseDirectory, "MainWindow.xaml"));
+    var actionTags = document.Descendants()
+        .Where(element => element.Name.LocalName == "MenuItem" &&
+                          (string?)element.Attribute("Click") == "PlayPetAction_Click")
+        .Select(element => (string?)element.Attribute("Tag"))
+        .Where(tag => tag is not null)
+        .ToHashSet(StringComparer.Ordinal);
+    var expected = new[] { "Waving", "Jumping", "RunningLeft", "RunningRight" };
+    if (!expected.All(actionTags.Contains))
+        failures.Add("pet context menu must expose wired wave, jump, and directional run actions");
+}
+
+void CheckHookLifecycleContract()
+{
+    using var hooks = JsonDocument.Parse(File.ReadAllText(
+        Path.Combine(AppContext.BaseDirectory, "hooks.json")));
+    var root = hooks.RootElement.GetProperty("hooks");
+    var requiredEvents = new[]
+    {
+        "SessionStart", "UserPromptSubmit", "PreModelRequest", "PreToolUse", "PostToolUse",
+        "SubagentStart", "SubagentStop", "PermissionRequest", "Stop", "Interrupt", "SessionEnd"
+    };
+    if (!requiredEvents.All(name => root.TryGetProperty(name, out _)))
+    {
+        failures.Add("plugin hooks must cover startup and detailed Codex lifecycle events");
+        return;
+    }
+
+    var commands = root.EnumerateObject()
+        .SelectMany(entry => entry.Value.EnumerateArray())
+        .SelectMany(group => group.GetProperty("hooks").EnumerateArray())
+        .Select(hook => hook.GetProperty("command").GetString() ?? string.Empty)
+        .ToArray();
+    if (commands.Any(command => !command.Contains("-NonInteractive", StringComparison.Ordinal) ||
+                                !command.Contains("-WindowStyle Hidden", StringComparison.Ordinal)) ||
+        !root.GetProperty("UserPromptSubmit").EnumerateArray()
+            .SelectMany(group => group.GetProperty("hooks").EnumerateArray())
+            .Any(hook => (hook.GetProperty("command").GetString() ?? string.Empty)
+                .Contains("start-pet.ps1", StringComparison.Ordinal)))
+        failures.Add("plugin hooks must restart the pet on the next prompt without a console window");
+}
+
 void CheckActivitySnapshotOrdering()
 {
     var now = DateTime.UtcNow;
@@ -118,6 +168,41 @@ void CheckActivitySnapshotOrdering()
     var expected = new[] { "input", "running", "blocked", "ready" };
     if (!ordered.Select(snapshot => snapshot.SessionHash).SequenceEqual(expected))
         failures.Add("multi-chat activity snapshots are not ordered by actionable priority");
+}
+
+void CheckCodexDesktopPathValidation()
+{
+    var trusted = @"C:\Program Files\WindowsApps\OpenAI.Codex_26.1111.9664.0_x64__2p2nqsd0c76g0\app\ChatGPT.exe";
+    var wrongPackage = @"C:\Program Files\WindowsApps\OpenAI.ChatGPT_1.0.0_x64__example\app\ChatGPT.exe";
+    var cli = @"C:\Program Files\WindowsApps\OpenAI.Codex_26.1111.9664.0_x64__2p2nqsd0c76g0\app\resources\codex.exe";
+    if (!CodexDesktopLifetimeMonitor.IsTrustedCodexDesktopExecutablePath(trusted) ||
+        CodexDesktopLifetimeMonitor.IsTrustedCodexDesktopExecutablePath(wrongPackage) ||
+        CodexDesktopLifetimeMonitor.IsTrustedCodexDesktopExecutablePath(cli))
+        failures.Add("lifetime binding must recognize only the trusted Codex desktop executable");
+}
+
+void CheckCodexLifetimeDecision()
+{
+    var misses = 0;
+    if (CodexDesktopLifetimeMonitor.ShouldExitAfterObservation(misses, false, out misses) ||
+        CodexDesktopLifetimeMonitor.ShouldExitAfterObservation(misses, false, out misses) ||
+        !CodexDesktopLifetimeMonitor.ShouldExitAfterObservation(misses, false, out misses))
+    {
+        failures.Add("lifetime binding must debounce three missing-host observations");
+        return;
+    }
+    CodexDesktopLifetimeMonitor.ShouldExitAfterObservation(misses, true, out misses);
+    if (misses != 0)
+        failures.Add("lifetime binding must reset its debounce when Codex returns");
+}
+
+void CheckActivityDescriptions()
+{
+    if (MainWindow.DescribeActivity(CodexActivityState.Running, "PreModelRequest") != "正在思考" ||
+        MainWindow.DescribeActivity(CodexActivityState.Running, "PreToolUse") != "正在执行工具" ||
+        MainWindow.DescribeActivity(CodexActivityState.NeedsInput, "PermissionRequest") != "等待你确认" ||
+        MainWindow.DescribeActivity(CodexActivityState.Ready, "Stop") != "任务已完成")
+        failures.Add("lifecycle hook events must map to useful privacy-preserving status labels");
 }
 
 void CheckAnimatedPetPackage()

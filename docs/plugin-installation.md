@@ -165,6 +165,10 @@ Get-Process CodexDesktopPet | Select-Object Id, Path
 “检查工作状态连接”会报告最近一次 Hook 事件或给出审核提示；重启操作只用于手工修改配置后的恢复。
 官方 Pets 兼容模式应标记为实验项。
 
+“与 Codex 同启同退”默认开启。手动退出桌宠后，在任意 Codex 聊天发送下一条消息会重新拉起；
+完全退出 Codex 桌面应用后，桌宠会在短暂防抖后自动结束。因为 `UserPromptSubmit` 新增了启动检查，
+更新插件后需要在 **Settings → Hooks** 重新核对并信任 Hook 定义。
+
 如果要回归验证已暂停开发的官方 Pets 兼容模式：
 
 1. 先在 ChatGPT 桌面版中启用官方 Pets，并确认 `Windows + Alt + P` 能打开 Quick Chat；
@@ -217,7 +221,7 @@ dotnet build .\src\CodexDesktopPet\CodexDesktopPet.csproj -c Release
 dotnet run --project .\tests\CodexDesktopPet.SmokeTests\CodexDesktopPet.SmokeTests.csproj -c Release
 ```
 
-应显示 16 项测试通过。它们覆盖四边/多屏拖动约束、多聊天活动状态聚合、快速输入框布局、
+应显示 21 项测试通过。它们覆盖四边/多屏拖动约束、无控制台启动、与 Codex 同启同退、细分工作阶段、点击/悬停/拖动互动、多聊天活动状态聚合、快速输入框布局、
 动画宠物包往返，以及公网分享链接与压缩包的安全校验。
 
 ## 10. 更新插件分支

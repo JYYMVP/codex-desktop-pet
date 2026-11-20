@@ -24,6 +24,10 @@ The plugin exposes structured settings through its local `desktop-pet-settings` 
 
 Use **Check activity connection** on that same page when activity animation does not follow Codex. It reads `%LOCALAPPDATA%/CodexDesktopPet/hook-health.json`, which contains only the last event name, mapped state, a session hash, and timestamp. If there is no event, tell the user to review and trust the current plugin definition in **Settings → Hooks**, then start a new turn. Never claim that installing or enabling the plugin automatically trusts a changed hook hash.
 
+`BindLifetimeToCodex` is enabled by default. Session start and user-prompt hooks ensure the helper is running, so after the user chooses Exit it returns on the next Codex prompt. The helper watches only the trusted `WindowsApps\\OpenAI.Codex_*\\app\\ChatGPT.exe` desktop host and exits after that host remains absent through a short debounce. It deliberately ignores Codex CLI and app-server child processes. Changing these hooks requires the user to review and trust the new hook hash again.
+
+`IdleActivityLevel` accepts 0 (quiet), 1 (standard), or 2 (lively) and controls occasional wave or hop gestures. `ReduceMotion` disables floating, thinking pulses, hover hops, and random idle gestures. Prefer these plugin-page controls instead of asking the user to edit JSON.
+
 For setup, first check Windows, the .NET 8 runtime, `codex.exe`, and the expected executable path. Explain any missing dependency before changing the system. Build or install only when the user requested setup. After publishing the Windows project, run `${PLUGIN_ROOT}/scripts/install-pet.ps1 -SourceDirectory <publish-directory>` and verify `%LOCALAPPDATA%/CodexDesktopPet/app/CodexDesktopPet.exe`, the process, and the log. Use `uninstall-pet.ps1` when the user asks to remove the installed application files; it preserves settings and logs.
 
 For troubleshooting, inspect `%LOCALAPPDATA%\CodexDesktopPet\desktop-pet.log`, then distinguish hotkey registration, selection capture, Codex connectivity, and rendering failures. Prefer the smallest repair and retest the actual shortcut path.
@@ -40,6 +44,6 @@ Use **Install / update desktop pet** on the plugin page to download the latest G
 
 `FollowCodexActivity` enables official-style activity mirroring for the standalone pet. Updating these hooks changes their trust hash, so tell the user to review and trust the plugin hooks again in **Settings → Hooks**. If they decline, direct questions, OCR, and screen comments still work, but activity from other Codex chats will not animate the pet.
 
-The standalone pet can be dragged to the top and other edges of the Windows virtual desktop while keeping the pet and action dock recoverable. Quick input uses a separate popup anchored above the pet; Windows flips it below near the top edge. If the user reports that input covers the pet, verify they are running version 0.10.0 or later before changing layout offsets.
+The standalone pet can be dragged to the top and other edges of the Windows virtual desktop while keeping the pet and action dock recoverable. Quick input uses a separate popup anchored above the pet; Windows flips it below near the top edge. If the user reports that input covers the pet, verify they are running version 0.10.1 or later before changing layout offsets.
 
 When the user asks about conversation memory, explain that each pet uses its own persistent Codex thread. “New pet conversation” switches to a new thread without deleting old Codex history. Screen comments use a separate ephemeral thread so they do not pollute the pet conversation.

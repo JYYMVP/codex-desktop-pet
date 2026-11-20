@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "codex-desktop-pet",
-  "version": "0.10.0",
-  "description": "Run an official-style standalone Codex desktop pet with native plugin-page controls, selection shortcuts, OCR, persistent chat, screen comments, activity states, and ChatGPT Pets sprite-sheet import.",
+  "version": "0.10.1",
+  "description": "Run a Codex-bound desktop companion with automatic lifecycle, native plugin-page controls, selection shortcuts, OCR, persistent chat, screen comments, and detailed activity states.",
   "author": {
     "name": "JYYMVP",
     "url": "https://github.com/JYYMVP"
@@ -17,7 +17,7 @@
       "interface": {
         "displayName": "Codex Desktop Pet",
         "shortDescription": "Official-style desktop pet",
-        "longDescription": "Configure an official-style native Windows companion directly from the plugin details page, with global selected-text questions, OCR, persistent Codex chats, separate screen-comment bubbles, activity and pointer-aware animations, and local ChatGPT Pets v1/v2 sprite-sheet import.",
+        "longDescription": "Configure a Codex-bound native Windows companion directly from the plugin details page. It starts and exits with Codex, asks about selected text, performs OCR, keeps per-pet Codex chats, separates screen comments from answers, and maps privacy-preserving lifecycle events to animations.",
         "developerName": "JYYMVP",
         "category": "Productivity",
         "capabilities": ["Interactive", "Read", "Write"],

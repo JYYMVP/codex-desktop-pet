@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private readonly CodexUsageService _usage;
     private readonly PixelPetController _petController;
     private readonly CodexActivityMonitor _activityMonitor = new();
+    private readonly CodexDesktopLifetimeMonitor _lifetimeMonitor = new();
     private readonly ScreenCaptureService _screenCapture = new();
     private readonly DispatcherTimer _screenWatchTimer = new();
     private readonly DispatcherTimer _windowWatchTimer = new();
@@ -31,6 +32,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _interactionAnimationTimer = new();
     private readonly DispatcherTimer _pointerLookTimer = new();
     private readonly DispatcherTimer _statusChipTimer = new();
+    private readonly DispatcherTimer _idleActionTimer = new();
     private GlobalHotKeyManager? _hotKey;
     private GlobalHotKeyManager? _ocrHotKey;
     private GlobalHotKeyManager? _togglePetHotKey;
@@ -45,6 +47,7 @@ public partial class MainWindow : Window
     private System.Windows.Point? _petPressPosition;
     private System.Windows.Point? _dragStartPointerScreen;
     private System.Windows.Point _dragStartWindowPosition;
+    private double _lastDragPointerX;
     private bool _petDragged;
     private string? _lastForegroundIdentity;
     private string? _pendingForegroundIdentity;
@@ -70,6 +73,7 @@ public partial class MainWindow : Window
         _interactionAnimationTimer.Tick += (_, _) =>
         {
             _interactionAnimationTimer.Stop();
+            StartIdleAnimation();
             RestoreRestingPetState();
         };
         _pointerLookTimer.Interval = TimeSpan.FromMilliseconds(100);
@@ -81,8 +85,14 @@ public partial class MainWindow : Window
             if (_currentPetState == PetState.Ready)
                 StatusChip.Visibility = Visibility.Collapsed;
         };
+        _idleActionTimer.Tick += (_, _) => RunIdleAction();
         _activityMonitor.StatusChanged += ActivityMonitor_StatusChanged;
         _activityMonitor.SnapshotsChanged += ActivityMonitor_SnapshotsChanged;
+        _lifetimeMonitor.CodexExited += (_, _) =>
+        {
+            _allowClose = true;
+            Close();
+        };
         SetAnswerMarkdown(_answerMarkdown);
     }
 
@@ -102,7 +112,9 @@ public partial class MainWindow : Window
         ConfigureScreenWatching();
         ConfigureWindowChangeComments();
         ConfigureCodexActivityMonitoring();
+        ConfigureCodexDesktopLifetime();
         ConfigurePointerLook();
+        ConfigureIdleActivity();
 
         try { RegisterConfiguredHotKey(); }
         catch (Exception ex)
@@ -250,6 +262,12 @@ public partial class MainWindow : Window
 
     private void StartIdleAnimation()
     {
+        if (_settings.ReduceMotion)
+        {
+            PetTranslate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, null);
+            PetTranslate.Y = 0;
+            return;
+        }
         PetTranslate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty,
             new DoubleAnimation(0, -7, TimeSpan.FromSeconds(1.5))
             {
@@ -261,6 +279,8 @@ public partial class MainWindow : Window
 
     private void StartThinkingAnimation()
     {
+        if (_settings.ReduceMotion)
+            return;
         var pulse = new DoubleAnimation(1, 1.08, TimeSpan.FromMilliseconds(450))
         {
             AutoReverse = true,
@@ -310,7 +330,7 @@ public partial class MainWindow : Window
             menu.Items.Add("宠物库…", null, (_, _) => OpenPetLibrary());
         }
         menu.Items.Add("设置…", null, (_, _) => OpenSettings());
-        menu.Items.Add("退出", null, (_, _) => ExitApplication());
+        menu.Items.Add("退出（下次 Codex 提问自动重启）", null, (_, _) => ExitApplication());
 
         _trayIcon = new Forms.NotifyIcon
         {
@@ -708,7 +728,9 @@ public partial class MainWindow : Window
             ConfigureScreenWatching();
             ConfigureWindowChangeComments();
             ConfigureCodexActivityMonitoring();
+            ConfigureCodexDesktopLifetime();
             ConfigurePointerLook();
+            ConfigureIdleActivity();
             UpdateContextHint();
             RecreateTrayIcon();
             if (_settings.OfficialPetsCompanionMode || _settings.PetHidden)
@@ -851,6 +873,46 @@ public partial class MainWindow : Window
                      $"Enabled={_settings.FollowCodexActivity && !_settings.OfficialPetsCompanionMode}");
     }
 
+    private void ConfigureCodexDesktopLifetime()
+    {
+        _lifetimeMonitor.Stop();
+        if (_settings.BindLifetimeToCodex)
+            _lifetimeMonitor.Start();
+        AppLog.Write($"Codex-bound lifetime configured. Enabled={_settings.BindLifetimeToCodex}");
+    }
+
+    private void ConfigureIdleActivity()
+    {
+        _idleActionTimer.Stop();
+        StartIdleAnimation();
+        if (_settings.ReduceMotion || _settings.IdleActivityLevel <= 0 ||
+            _settings.OfficialPetsCompanionMode)
+            return;
+        ScheduleNextIdleAction();
+        _idleActionTimer.Start();
+        AppLog.Write($"Idle activity configured. Level={_settings.IdleActivityLevel}; " +
+                     $"ReduceMotion={_settings.ReduceMotion}");
+    }
+
+    private void ScheduleNextIdleAction()
+    {
+        var (minimum, maximum) = _settings.IdleActivityLevel >= 2 ? (10, 22) : (28, 52);
+        _idleActionTimer.Interval = TimeSpan.FromSeconds(Random.Shared.Next(minimum, maximum + 1));
+    }
+
+    private void RunIdleAction()
+    {
+        ScheduleNextIdleAction();
+        if (_settings.ReduceMotion || _busy || !IsVisible || ComposerPopup.IsOpen ||
+            AnswerPanel.Visibility == Visibility.Visible ||
+            CommentBubble.Visibility == Visibility.Visible ||
+            _currentPetState is not (PetState.Idle or PetState.Ready))
+            return;
+        var state = Random.Shared.Next(3) == 0 ? PetState.Jumping : PetState.Waving;
+        PlayPetInteraction(state, TimeSpan.FromMilliseconds(900),
+            hop: state == PetState.Jumping);
+    }
+
     private void ConfigurePointerLook()
     {
         _pointerLookTimer.Stop();
@@ -903,10 +965,17 @@ public partial class MainWindow : Window
     {
         if (!Dispatcher.CheckAccess())
         {
-            Dispatcher.BeginInvoke(RefreshTrayActivityMenu);
+            Dispatcher.BeginInvoke(() =>
+            {
+                RefreshTrayActivityMenu();
+                if (!_busy)
+                    ApplyExternalActivityState();
+            });
             return;
         }
         RefreshTrayActivityMenu();
+        if (!_busy)
+            ApplyExternalActivityState();
     }
 
     private void RefreshTrayActivityMenu()
@@ -929,14 +998,7 @@ public partial class MainWindow : Window
 
         foreach (var snapshot in snapshots.Take(12))
         {
-            var state = snapshot.State switch
-            {
-                CodexActivityState.Running => "工作中",
-                CodexActivityState.NeedsInput => "需要输入",
-                CodexActivityState.Ready => "已就绪",
-                CodexActivityState.Blocked => "已阻塞",
-                _ => "空闲"
-            };
+            var state = DescribeActivity(snapshot.State, snapshot.Event);
             var shortHash = snapshot.SessionHash[..Math.Min(6, snapshot.SessionHash.Length)]
                 .ToUpperInvariant();
             _trayActivityItem.DropDownItems.Add(new Forms.ToolStripMenuItem(
@@ -962,7 +1024,37 @@ public partial class MainWindow : Window
             CodexActivityState.Blocked => PetState.Error,
             _ => PetState.Idle
         });
+        if (_externalActivityState == CodexActivityState.Idle)
+            return;
+
+        var snapshots = _activityMonitor.CurrentSnapshots;
+        var representative = snapshots.FirstOrDefault(snapshot =>
+            snapshot.State == _externalActivityState);
+        var label = DescribeActivity(_externalActivityState, representative?.Event);
+        var activeCount = snapshots.Count(snapshot =>
+            snapshot.State is CodexActivityState.Running or CodexActivityState.NeedsInput);
+        StatusText.Text = activeCount > 1 ? $"{label} · {activeCount} 个对话" : label;
+        StatusChip.Visibility = Visibility.Visible;
     }
+
+    internal static string DescribeActivity(CodexActivityState state, string? eventName) =>
+        state switch
+        {
+            CodexActivityState.NeedsInput => "等待你确认",
+            CodexActivityState.Blocked => "任务已阻塞",
+            CodexActivityState.Ready => "任务已完成",
+            CodexActivityState.Running => eventName switch
+            {
+                "UserPromptSubmit" => "正在接收任务",
+                "PreModelRequest" => "正在思考",
+                "PreToolUse" => "正在执行工具",
+                "PostToolUse" => "正在整理结果",
+                "SubagentStart" => "子任务工作中",
+                "SubagentStop" => "正在汇总子任务",
+                _ => "Codex 工作中"
+            },
+            _ => "空闲"
+        };
 
     private void RestoreRestingPetState()
     {
@@ -1114,6 +1206,7 @@ public partial class MainWindow : Window
         _petPressPosition = e.GetPosition(this);
         _dragStartPointerScreen = GetPointerScreenPosition();
         _dragStartWindowPosition = new System.Windows.Point(Left, Top);
+        _lastDragPointerX = _dragStartPointerScreen?.X ?? 0;
         _petDragged = false;
         PetBody.CaptureMouse();
         e.Handled = true;
@@ -1134,11 +1227,16 @@ public partial class MainWindow : Window
                 return;
             _petDragged = true;
             SetComposerOpen(false);
+            PetTranslate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, null);
         }
 
         if (_dragStartPointerScreen is not null)
         {
             var pointer = GetPointerScreenPosition();
+            var horizontalDelta = pointer.X - _lastDragPointerX;
+            if (Math.Abs(horizontalDelta) >= 1.5)
+                SetPetState(horizontalDelta > 0 ? PetState.RunningRight : PetState.RunningLeft);
+            _lastDragPointerX = pointer.X;
             MoveWindowKeepingControlsVisible(
                 _dragStartWindowPosition.X + pointer.X - _dragStartPointerScreen.Value.X,
                 _dragStartWindowPosition.Y + pointer.Y - _dragStartPointerScreen.Value.Y);
@@ -1173,11 +1271,51 @@ public partial class MainWindow : Window
             AppLog.Write($"Pet clicked. AnswerVisible={AnswerPanel.Visibility == Visibility.Visible}; " +
                          $"ComposerVisible={ComposerPopup.IsOpen}");
         }
+        else if (_petDragged)
+        {
+            StartIdleAnimation();
+            RestoreRestingPetState();
+            AppLog.Write("Pet drag completed and resting animation restored.");
+        }
 
         _petPressPosition = null;
         _dragStartPointerScreen = null;
         _petDragged = false;
         e.Handled = true;
+    }
+
+    private void PetBody_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (_settings.ReduceMotion || _busy || _petDragged ||
+            PetBody.IsMouseCaptured || ComposerPopup.IsOpen)
+            return;
+        PlayPetInteraction(PetState.Jumping, TimeSpan.FromMilliseconds(720), hop: true);
+    }
+
+    private void PlayPetAction_Click(object sender, RoutedEventArgs e)
+    {
+        if (_busy || sender is not System.Windows.Controls.MenuItem { Tag: string value } ||
+            !Enum.TryParse<PetState>(value, out var state))
+            return;
+        PlayPetInteraction(state, TimeSpan.FromMilliseconds(1200),
+            hop: state == PetState.Jumping);
+    }
+
+    private void PlayPetInteraction(PetState state, TimeSpan duration, bool hop)
+    {
+        _interactionAnimationTimer.Stop();
+        _interactionAnimationTimer.Interval = duration;
+        SetPetState(state);
+        if (hop && !_settings.ReduceMotion)
+        {
+            PetTranslate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty,
+                new DoubleAnimation(0, -18, TimeSpan.FromMilliseconds(240))
+                {
+                    AutoReverse = true,
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                });
+        }
+        _interactionAnimationTimer.Start();
     }
 
     private void SetComposerOpen(bool open)
@@ -1245,8 +1383,10 @@ public partial class MainWindow : Window
         _interactionAnimationTimer.Stop();
         _pointerLookTimer.Stop();
         _statusChipTimer.Stop();
+        _idleActionTimer.Stop();
         ComposerPopup.IsOpen = false;
         _activityMonitor.Dispose();
+        _lifetimeMonitor.Dispose();
         _codex.Dispose();
         _petController.Dispose();
     }

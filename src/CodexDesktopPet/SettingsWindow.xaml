@@ -34,6 +34,7 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <TextBlock Grid.ColumnSpan="2" Text="高级设置" FontSize="24" FontWeight="SemiBold"
@@ -90,42 +91,44 @@
                   ToolTip="启用后隐藏独立桌宠窗口，使用 Windows+Alt+P 唤起官方 Pets" />
         <CheckBox x:Name="PetHiddenBox" Grid.Row="8" Grid.Column="1" Margin="0,8,0,6"
                   Content="启动后隐藏独立桌宠（可用显示/隐藏快捷键唤回）" />
-        <CheckBox x:Name="FollowCodexActivityBox" Grid.Row="9" Grid.Column="1" Margin="0,8,0,6"
+        <CheckBox x:Name="BindLifetimeToCodexBox" Grid.Row="9" Grid.Column="1" Margin="0,8,0,6"
+                  Content="与 Codex 同启同退（退出后下次提问自动恢复）" />
+        <CheckBox x:Name="FollowCodexActivityBox" Grid.Row="10" Grid.Column="1" Margin="0,8,0,6"
                   Content="跟随 Codex 全局工作状态（工作中 / 需要输入 / 已就绪）"
                   ToolTip="只读取插件生命周期 Hook 写入的状态元数据，不读取提示词、回答或聊天记录" />
-        <CheckBox x:Name="FollowPointerWithPetBox" Grid.Row="10" Grid.Column="1" Margin="0,8,0,6"
+        <CheckBox x:Name="FollowPointerWithPetBox" Grid.Row="11" Grid.Column="1" Margin="0,8,0,6"
                   Content="宠物视线跟随鼠标（仅支持含 16 向视线帧的 v2 宠物包）" />
-        <CheckBox x:Name="ScreenWatchingBox" Grid.Row="11" Grid.Column="1" Margin="0,8,0,6"
+        <CheckBox x:Name="ScreenWatchingBox" Grid.Row="12" Grid.Column="1" Margin="0,8,0,6"
                   Checked="RefreshDependentControls" Unchecked="RefreshDependentControls"
                   Content="定时看屏幕并吐槽（会截取当前全部显示器）" />
 
-        <TextBlock Grid.Row="12" Text="看屏幕间隔（分钟）" VerticalAlignment="Center" />
-        <TextBox x:Name="ScreenIntervalBox" Grid.Row="12" Grid.Column="1" Margin="0,5" Padding="7" />
-        <CheckBox x:Name="WindowChangeCommentsBox" Grid.Row="13" Grid.Column="1" Margin="0,8,0,6"
+        <TextBlock Grid.Row="13" Text="看屏幕间隔（分钟）" VerticalAlignment="Center" />
+        <TextBox x:Name="ScreenIntervalBox" Grid.Row="13" Grid.Column="1" Margin="0,5" Padding="7" />
+        <CheckBox x:Name="WindowChangeCommentsBox" Grid.Row="14" Grid.Column="1" Margin="0,8,0,6"
                   Checked="RefreshDependentControls" Unchecked="RefreshDependentControls"
                   Content="切换到新窗口或页面时吐槽（会截取当前全部显示器）" />
-        <TextBlock Grid.Row="14" Text="新界面吐槽冷却（分钟）" VerticalAlignment="Center" />
-        <TextBox x:Name="WindowChangeCooldownBox" Grid.Row="14" Grid.Column="1" Margin="0,5" Padding="7" />
-        <TextBlock Grid.Row="15" Text="碎碎念停留（秒）" VerticalAlignment="Center" />
-        <TextBox x:Name="CommentBubbleSecondsBox" Grid.Row="15" Grid.Column="1" Margin="0,5" Padding="7"
+        <TextBlock Grid.Row="15" Text="新界面吐槽冷却（分钟）" VerticalAlignment="Center" />
+        <TextBox x:Name="WindowChangeCooldownBox" Grid.Row="15" Grid.Column="1" Margin="0,5" Padding="7" />
+        <TextBlock Grid.Row="16" Text="碎碎念停留（秒）" VerticalAlignment="Center" />
+        <TextBox x:Name="CommentBubbleSecondsBox" Grid.Row="16" Grid.Column="1" Margin="0,5" Padding="7"
                  ToolTip="范围 4–60 秒；点击气泡可立即关闭" />
-        <TextBlock Grid.Row="16" Text="保留上下文轮数" VerticalAlignment="Center" />
-        <TextBox x:Name="ContextTurnsBox" Grid.Row="16" Grid.Column="1" Margin="0,5" Padding="7"
+        <TextBlock Grid.Row="17" Text="保留上下文轮数" VerticalAlignment="Center" />
+        <TextBox x:Name="ContextTurnsBox" Grid.Row="17" Grid.Column="1" Margin="0,5" Padding="7"
                  IsEnabled="False" ToolTip="持久 Codex 对话会自行管理上下文；保留此项用于旧设置兼容" />
-        <TextBlock Grid.Row="17" Text="回答最大字符数" VerticalAlignment="Center" />
-        <TextBox x:Name="MaximumAnswerBox" Grid.Row="17" Grid.Column="1" Margin="0,5" Padding="7" />
-        <TextBlock Grid.Row="18" Text="回答超时（秒）" VerticalAlignment="Center" />
-        <TextBox x:Name="TimeoutBox" Grid.Row="18" Grid.Column="1" Margin="0,5" Padding="7" />
-        <TextBlock Grid.Row="19" Text="宠物包路径" VerticalAlignment="Center" />
-        <TextBox x:Name="PetPackPathBox" Grid.Row="19" Grid.Column="1" Margin="0,5" Padding="7"
+        <TextBlock Grid.Row="18" Text="回答最大字符数" VerticalAlignment="Center" />
+        <TextBox x:Name="MaximumAnswerBox" Grid.Row="18" Grid.Column="1" Margin="0,5" Padding="7" />
+        <TextBlock Grid.Row="19" Text="回答超时（秒）" VerticalAlignment="Center" />
+        <TextBox x:Name="TimeoutBox" Grid.Row="19" Grid.Column="1" Margin="0,5" Padding="7" />
+        <TextBlock Grid.Row="20" Text="宠物包路径" VerticalAlignment="Center" />
+        <TextBox x:Name="PetPackPathBox" Grid.Row="20" Grid.Column="1" Margin="0,5" Padding="7"
                  ToolTip="留空使用内置宠物；推荐从右键菜单的宠物库选择，不必手工填写" />
-        <CheckBox x:Name="StayOnTopBox" Grid.Row="20" Grid.Column="1" Margin="0,12,0,6" Content="桌宠始终置顶" />
+        <CheckBox x:Name="StayOnTopBox" Grid.Row="21" Grid.Column="1" Margin="0,12,0,6" Content="桌宠始终置顶" />
 
-        <TextBlock Grid.Row="21" Grid.ColumnSpan="2" Margin="0,18,0,0"
+        <TextBlock Grid.Row="22" Grid.ColumnSpan="2" Margin="0,18,0,0"
                    Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap"
                    Text="OCR 只在按下专用快捷键或菜单命令后截取你框选的区域，回答后立即删除临时图片。自动截图默认关闭并会在回答后删除。" />
 
-        <StackPanel Grid.Row="22" Grid.ColumnSpan="2" Orientation="Horizontal"
+        <StackPanel Grid.Row="23" Grid.ColumnSpan="2" Orientation="Horizontal"
                     HorizontalAlignment="Right" Margin="0,18,0,0">
             <TextBlock x:Name="ValidationText" Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center" Margin="0,0,14,0" />
             <Button Content="取消" Width="82" Margin="0,0,8,0" Padding="8,5" Click="Cancel_Click" />
