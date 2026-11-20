@@ -19,4 +19,23 @@ if (-not (Test-Path -LiteralPath $installedExe -PathType Leaf)) {
     throw "The desktop pet installation did not produce $installedExe"
 }
 
+$programsDirectory = [Environment]::GetFolderPath([Environment+SpecialFolder]::Programs)
+$shortcutPath = Join-Path $programsDirectory "Codex Desktop Pet.lnk"
+$shell = New-Object -ComObject WScript.Shell
+try {
+    $shortcut = $shell.CreateShortcut($shortcutPath)
+    $shortcut.TargetPath = $installedExe
+    $shortcut.Arguments = "--show"
+    $shortcut.WorkingDirectory = $destination
+    $shortcut.IconLocation = "$installedExe,0"
+    $shortcut.Description = "显示 Codex Desktop Pet"
+    $shortcut.Save()
+} finally {
+    if ($null -ne $shortcut) {
+        [Runtime.InteropServices.Marshal]::FinalReleaseComObject($shortcut) | Out-Null
+    }
+    [Runtime.InteropServices.Marshal]::FinalReleaseComObject($shell) | Out-Null
+}
+
 Write-Output $installedExe
+Write-Output $shortcutPath

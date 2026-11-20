@@ -44,6 +44,7 @@ CheckPetInteractionMenu();
 CheckHookLifecycleContract();
 CheckShowPetActionContract();
 CheckPetEnableControlContract();
+CheckVisualLauncherContract();
 CheckComposerLayout();
 CheckAnimatedPetPackage();
 CheckGistShareLinkValidation();
@@ -60,7 +61,7 @@ if (failures.Count > 0)
     return 1;
 }
 
-Console.WriteLine("23 placement, lifecycle, activity, interaction, plugin-control, editor, package, and share-security smoke tests passed.");
+Console.WriteLine("24 placement, lifecycle, activity, interaction, launcher, plugin-control, editor, package, and share-security smoke tests passed.");
 return 0;
 
 void Check(string name, double expectedLeft, double expectedTop, Point actual)
@@ -182,6 +183,20 @@ void CheckPetEnableControlContract()
         !mcp.RootElement.GetProperty("mcpServers").TryGetProperty("pet-controls", out _) ||
         !xaml.Contains("彻底停用桌宠（从插件页重新启用）", StringComparison.Ordinal))
         failures.Add("the plugin must expose a real enable switch and keep hooks from reviving an explicitly disabled pet");
+}
+
+void CheckVisualLauncherContract()
+{
+    var app = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "App.xaml.cs.txt"));
+    var installer = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "install-pet.ps1"));
+    var setup = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "CodexDesktopPet.iss"));
+    if (!app.Contains("--show", StringComparison.Ordinal) ||
+        !app.Contains("ShowEventName", StringComparison.Ordinal) ||
+        !app.Contains("ShowFromExternalRequestAsync", StringComparison.Ordinal) ||
+        !installer.Contains("CreateShortcut", StringComparison.Ordinal) ||
+        !installer.Contains("$shortcut.Arguments = \"--show\"", StringComparison.Ordinal) ||
+        !setup.Contains("Parameters: \"--show\"", StringComparison.Ordinal))
+        failures.Add("all installers must create a visual --show launcher that revives or reveals the single running instance");
 }
 
 void CheckActivitySnapshotOrdering()

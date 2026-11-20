@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.10.3"
+  #define AppVersion "0.10.4"
 #endif
 #ifndef PublishDir
   #error PublishDir must point to the dotnet publish directory
@@ -37,14 +37,14 @@ VersionInfoDescription=Codex Desktop Pet installer
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\Codex Desktop Pet"; Filename: "{app}\CodexDesktopPet.exe"
-Name: "{autodesktop}\Codex Desktop Pet"; Filename: "{app}\CodexDesktopPet.exe"; Tasks: desktopicon
+Name: "{autoprograms}\Codex Desktop Pet"; Filename: "{app}\CodexDesktopPet.exe"; Parameters: "--show"
+Name: "{autodesktop}\Codex Desktop Pet"; Filename: "{app}\CodexDesktopPet.exe"; Parameters: "--show"; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加快捷方式："; Flags: unchecked
 
 [Run]
-Filename: "{app}\CodexDesktopPet.exe"; Description: "启动 Codex Desktop Pet"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\CodexDesktopPet.exe"; Parameters: "--show"; Description: "启动 Codex Desktop Pet"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"

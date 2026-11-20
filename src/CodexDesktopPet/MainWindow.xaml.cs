@@ -131,7 +131,7 @@ public partial class MainWindow : Window
         }
 
         if (_settings.OfficialPetsCompanionMode || _settings.PetHidden)
-            Dispatcher.BeginInvoke(Hide, DispatcherPriority.Background);
+            Hide();
     }
 
     private async void HotKey_Pressed(object? sender, EventArgs e)
@@ -366,6 +366,19 @@ public partial class MainWindow : Window
         ShowStandalonePet(persistVisibility: true);
     }
 
+    internal async Task ShowFromExternalRequestAsync()
+    {
+        AppLog.Write("External show request received.");
+        if (_settings.OfficialPetsCompanionMode)
+        {
+            await _officialPets.ShowControlsAsync();
+            return;
+        }
+
+        ShowStandalonePet(persistVisibility: true);
+        Activate();
+    }
+
     private void ShowStandalonePet(bool persistVisibility)
     {
         if (persistVisibility && _settings.PetHidden)
@@ -377,6 +390,7 @@ public partial class MainWindow : Window
         WindowState = WindowState.Normal;
         Topmost = false;
         Topmost = _settings.StayOnTop;
+        AppLog.Write($"Standalone pet shown. Visible={IsVisible}; Persisted={!_settings.PetHidden}.");
     }
 
     private void HideStandalonePet(bool persistVisibility)

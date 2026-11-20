@@ -112,6 +112,7 @@ Test-Path "$env:LOCALAPPDATA\CodexDesktopPet\app\CodexDesktopPet.exe"
 ```
 
 设置和日志位于该目录的上一级，不会在普通卸载时删除。
+安装脚本还会创建 Windows 开始菜单入口 **Codex Desktop Pet**。它使用 `--show` 模式：进程不存在时重新启用并启动；进程仍在后台时通知现有单实例立即显示，不会再弹出“已经在运行”后无事发生。
 
 如果仓库已经发布带 SHA-256 文件的 GitHub Release，也可以展开插件详情页的
 `pet-controls`，点击 **安装 / 更新桌宠**。该操作只接受 GitHub HTTPS 下载地址，
@@ -120,14 +121,13 @@ Authenticode 签名检查。
 
 ## 7. 手动启动验证
 
-如果普通独立版桌宠正在运行，请先从系统托盘菜单选择“退出”。启动脚本检测到任意同名
-进程后不会再启动第二份，因此必须先确保下面的命令没有输出：
+先从 Windows 开始菜单点击 **Codex Desktop Pet** 验证可视化恢复入口。也可以使用下面的进程命令确认安装路径：
 
 ```powershell
 Get-Process CodexDesktopPet -ErrorAction SilentlyContinue
 ```
 
-然后直接执行插件使用的同一份启动脚本：
+需要验证 Hook 使用的后台启动脚本时，再执行：
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
@@ -136,7 +136,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
 Get-Process CodexDesktopPet | Select-Object Id, Path
 ```
 
-应看到“Codex 桌宠”窗口，而且 `Path` 应指向：
+开始菜单入口应显示“Codex 桌宠”窗口；后台启动脚本至少应保证进程存在，而且 `Path` 应指向：
 
 ```text
 %LOCALAPPDATA%\CodexDesktopPet\app\CodexDesktopPet.exe
@@ -165,7 +165,7 @@ Get-Process CodexDesktopPet | Select-Object Id, Path
 “检查工作状态连接”会报告最近一次 Hook 事件或给出审核提示；重启操作只用于手工修改配置后的恢复。
 官方 Pets 兼容模式应标记为实验项。
 
-“与 Codex 同启同退”默认开启。手动退出桌宠后，在任意 Codex 聊天发送下一条消息会重新拉起；
+“与 Codex 同启同退”默认开启。选择“彻底停用”后 Hook 会尊重该状态，不会自动拉起；需要恢复时从 Windows 开始菜单启动 **Codex Desktop Pet**，或在可用的插件设置中点击“显示宠物”。
 完全退出 Codex 桌面应用后，桌宠会在短暂防抖后自动结束。因为 `UserPromptSubmit` 新增了启动检查，
 更新插件后需要在 **Settings → Hooks** 重新核对并信任 Hook 定义。
 
@@ -221,7 +221,7 @@ dotnet build .\src\CodexDesktopPet\CodexDesktopPet.csproj -c Release
 dotnet run --project .\tests\CodexDesktopPet.SmokeTests\CodexDesktopPet.SmokeTests.csproj -c Release
 ```
 
-应显示 23 项测试通过。它们覆盖四边/多屏拖动约束、无控制台启动、与 Codex 同启同退、插件页启用和显示宠物控制、细分工作阶段、点击/悬停/拖动互动、多聊天活动状态聚合、快速输入框布局、
+应显示 24 项测试通过。它们覆盖四边/多屏拖动约束、无控制台启动、开始菜单可视化恢复、与 Codex 同启同退、插件页启用和显示宠物控制、细分工作阶段、点击/悬停/拖动互动、多聊天活动状态聚合、快速输入框布局、
 动画宠物包往返，以及公网分享链接与压缩包的安全校验。
 
 ## 10. 更新插件分支

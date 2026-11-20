@@ -73,6 +73,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 默认安装到 `%LOCALAPPDATA%\CodexDesktopPet\app`，并创建桌面与开始菜单快捷方式。
+从插件页或本地开发脚本安装时，也会创建开始菜单中的 **Codex Desktop Pet**；点击该入口会使用 `--show` 模式，重新启用已停用的桌宠，或唤回已隐藏的单实例窗口。
 需要开机启动时加 `-StartWithWindows`。卸载程序文件但保留宠物和设置：
 
 ```powershell
@@ -99,6 +100,7 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 “常用开关”中的“检查工作状态连接”会显示最近一次 Hook 事件；若从未收到事件，会明确提示到
 **Settings → Hooks** 审核当前插件 Hook。
 “安装 / 更新桌宠”会从 GitHub Release 下载 Windows ZIP 和 SHA-256 校验文件，验证通过后再安装并启动。
+如果当前 Codex 版本没有显示这些结构化设置，可直接从 Windows 开始菜单启动 **Codex Desktop Pet**；该入口不依赖插件详情页。
 也可以右键桌宠选择“设置…”，调整回答语言、超时、回答长度、推理强度和宠物包路径等高级项。
 高级设置窗口支持滚动，并会禁用与所选模式冲突的选项。划词助手默认使用 `none` 推理强度，并为其 Codex 子进程关闭
 hooks、plugins、apps 和 MCP，避免桌宠插件递归启动及无关工具初始化。桌宠使用

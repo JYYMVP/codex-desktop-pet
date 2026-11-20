@@ -25,6 +25,15 @@
     <None Include="..\..\plugins\codex-desktop-pet\mcp.json"
           Link="mcp.json"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\CodexDesktopPet\App.xaml.cs"
+          Link="App.xaml.cs.txt"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\plugins\codex-desktop-pet\scripts\install-pet.ps1"
+          Link="install-pet.ps1"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\packaging\CodexDesktopPet.iss"
+          Link="CodexDesktopPet.iss"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

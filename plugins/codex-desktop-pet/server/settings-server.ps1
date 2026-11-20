@@ -653,7 +653,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     _meta = [ordered]@{
                         "io.modelcontextprotocol/serverInfo" = [ordered]@{
                             name = "codex-desktop-pet-controls"
-                            version = "0.10.3"
+                            version = "0.10.4"
                         }
                     }
                     capabilities = [ordered]@{
@@ -670,7 +670,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     protocolVersion = $protocolVersion
                     serverInfo = [ordered]@{
                         name = "codex-desktop-pet-controls"
-                        version = "0.10.3"
+                        version = "0.10.4"
                     }
                     capabilities = [ordered]@{
                         tools = [ordered]@{ listChanged = $false }
