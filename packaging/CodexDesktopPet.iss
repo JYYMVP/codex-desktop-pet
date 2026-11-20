@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.10.2"
+  #define AppVersion "0.10.3"
 #endif
 #ifndef PublishDir
   #error PublishDir must point to the dotnet publish directory

@@ -10,9 +10,9 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>CodexDesktopPet</AssemblyName>
     <RootNamespace>CodexDesktopPet</RootNamespace>
-    <Version>0.10.2</Version>
-    <AssemblyVersion>0.10.2.0</AssemblyVersion>
-    <FileVersion>0.10.2.0</FileVersion>
+    <Version>0.10.3</Version>
+    <AssemblyVersion>0.10.3.0</AssemblyVersion>
+    <FileVersion>0.10.3.0</FileVersion>
   </PropertyGroup>
 
 </Project>

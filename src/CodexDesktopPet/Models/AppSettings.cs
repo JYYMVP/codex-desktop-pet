@@ -14,6 +14,7 @@ internal sealed class AppSettings
     public string ReasoningEffort { get; set; } = "none";
     public bool UseFastMode { get; set; }
     public bool OfficialPetsCompanionMode { get; set; }
+    public bool PetEnabled { get; set; } = true;
     public bool PetHidden { get; set; }
     public string HotKey { get; set; } = HotKeyGesture.DefaultValue;
     public string OcrHotKey { get; set; } = "Ctrl+Alt+R";

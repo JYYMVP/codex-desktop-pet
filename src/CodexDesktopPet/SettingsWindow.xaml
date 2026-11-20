@@ -41,7 +41,7 @@
                    Foreground="{StaticResource TextBrush}" Margin="0,0,0,8" />
         <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Margin="0,0,0,18"
                    Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap"
-                   Text="常用开关请在 Codex 的插件详情页展开“desktop-pet-settings”设置；这里保留快捷键、回答参数和本地宠物包等高级选项。" />
+                   Text="常用开关请在 Codex 的插件详情页展开“pet-controls”设置；这里保留快捷键、回答参数和本地宠物包等高级选项。" />
 
         <TextBlock Grid.Row="2" Text="Codex 可执行文件" VerticalAlignment="Center" />
         <TextBox x:Name="CodexExecutableBox" Grid.Row="2" Grid.Column="1" Margin="0,5" Padding="7" />

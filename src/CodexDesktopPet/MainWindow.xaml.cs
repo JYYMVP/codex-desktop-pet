@@ -100,6 +100,13 @@ public partial class MainWindow : Window
     {
         var appVersion = typeof(MainWindow).Assembly.GetName().Version?.ToString() ?? "unknown";
         AppLog.Write($"Window loaded. Version={appVersion}; Settings={AppSettings.SettingsPath}");
+        if (!_settings.PetEnabled)
+        {
+            AppLog.Write("Desktop pet is disabled in plugin settings; exiting without registering hotkeys.");
+            _allowClose = true;
+            Close();
+            return;
+        }
         Left = SystemParameters.WorkArea.Right - ActualWidth - 18;
         Top = SystemParameters.WorkArea.Bottom - ActualHeight - 18;
         Topmost = _settings.StayOnTop;
@@ -330,7 +337,7 @@ public partial class MainWindow : Window
             menu.Items.Add("宠物库…", null, (_, _) => OpenPetLibrary());
         }
         menu.Items.Add("设置…", null, (_, _) => OpenSettings());
-        menu.Items.Add("退出（下次 Codex 提问自动重启）", null, (_, _) => ExitApplication());
+        menu.Items.Add("彻底停用（从插件页重新启用）", null, (_, _) => DisableAndExitApplication());
 
         _trayIcon = new Forms.NotifyIcon
         {
@@ -411,6 +418,14 @@ public partial class MainWindow : Window
     {
         _allowClose = true;
         Close();
+    }
+
+    private void DisableAndExitApplication()
+    {
+        _settings.PetEnabled = false;
+        _settings.Save();
+        AppLog.Write("Desktop pet disabled by the user. Plugin Show Pet or Enable Pet can restore it.");
+        ExitApplication();
     }
 
     private static string FriendlyError(Exception exception)
@@ -567,7 +582,7 @@ public partial class MainWindow : Window
             _commentBubbleTimer.Start();
     }
 
-    private void ExitMenu_Click(object sender, RoutedEventArgs e) => ExitApplication();
+    private void ExitMenu_Click(object sender, RoutedEventArgs e) => DisableAndExitApplication();
 
     private async void AskDirect_Click(object sender, RoutedEventArgs e) =>
         await AskDirectAsync();

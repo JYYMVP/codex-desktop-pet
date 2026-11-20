@@ -1,6 +1,8 @@
 {
   "OfficialPetsTitle": "实验：官方 Pets 兼容模式",
   "OfficialPetsDescription": "保留用于兼容性测试；当前优先开发独立桌宠模式。",
+  "EnablePetTitle": "启用桌宠",
+  "EnablePetDescription": "真正启动或停止 Windows 桌宠助手；关闭后 Codex Hook 也不会自动重启，重新开启即可恢复。",
   "HidePetTitle": "隐藏桌宠",
   "HidePetDescription": "保持助手在后台运行，但隐藏桌宠；仍可用显示/隐藏快捷键唤回。",
   "BindLifetimeTitle": "与 Codex 同启同退",

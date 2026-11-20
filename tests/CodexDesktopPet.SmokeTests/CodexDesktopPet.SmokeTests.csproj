@@ -19,6 +19,12 @@
     <None Include="..\..\plugins\codex-desktop-pet\server\settings-server.ps1"
           Link="settings-server.ps1"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\plugins\codex-desktop-pet\scripts\start-pet.ps1"
+          Link="start-pet.ps1"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\plugins\codex-desktop-pet\mcp.json"
+          Link="mcp.json"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

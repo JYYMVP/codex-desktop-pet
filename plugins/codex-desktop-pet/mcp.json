@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
   "mcpServers": {
-    "desktop-pet-settings": {
+    "pet-controls": {
       "type": "stdio",
       "command": "powershell.exe",
       "args": [

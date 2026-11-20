@@ -9,6 +9,20 @@ function Write-HookLog([string]$Message) {
         -Value "$(Get-Date -Format o) $Message"
 }
 
+$settingsPath = Join-Path $env:LOCALAPPDATA "CodexDesktopPet\settings.json"
+if (Test-Path -LiteralPath $settingsPath -PathType Leaf) {
+    try {
+        $settings = Get-Content -Raw -LiteralPath $settingsPath | ConvertFrom-Json
+        $enabledProperty = $settings.PSObject.Properties["PetEnabled"]
+        if ($null -ne $enabledProperty -and $enabledProperty.Value -eq $false) {
+            Write-HookLog "Desktop pet startup skipped because PetEnabled is false."
+            exit 0
+        }
+    } catch {
+        Write-HookLog "Desktop pet settings could not be read; using the enabled default."
+    }
+}
+
 if ($null -ne (Get-Process -Name "CodexDesktopPet" -ErrorAction SilentlyContinue)) {
     Write-HookLog "Desktop pet is already running."
     exit 0

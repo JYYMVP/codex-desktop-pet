@@ -95,7 +95,7 @@
                     <MenuItem Header="设置…" Click="OpenSettings_Click" />
                     <Separator />
                     <MenuItem x:Name="PetHideMenuItem" Header="隐藏桌宠（Ctrl+Alt+H）" Click="HidePet_Click" />
-                    <MenuItem Header="退出桌宠（下次提问自动重启）" Click="ExitMenu_Click" />
+                    <MenuItem Header="彻底停用桌宠（从插件页重新启用）" Click="ExitMenu_Click" />
                 </ContextMenu>
             </Grid.ContextMenu>
             <Grid.RenderTransform>

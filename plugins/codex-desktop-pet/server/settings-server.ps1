@@ -40,6 +40,7 @@ function Get-UiText([string]$Name, [string]$Fallback) {
 
 $defaults = [ordered]@{
     OfficialPetsCompanionMode = $false
+    PetEnabled = $true
     PetHidden = $false
     BindLifetimeToCodex = $true
     IdleActivityLevel = 1
@@ -120,6 +121,11 @@ function Get-SettingsSchema {
     return [ordered]@{
         type = "object"
         properties = [ordered]@{
+            PetEnabled = [ordered]@{
+                type = "boolean"
+                title = (Get-UiText "EnablePetTitle" "Enable desktop pet")
+                description = (Get-UiText "EnablePetDescription" "Start or stop the Windows helper. When disabled, Codex hooks will not restart it.")
+            }
             OfficialPetsCompanionMode = [ordered]@{
                 type = "boolean"
                 title = (Get-UiText "OfficialPetsTitle" "Experimental official Pets mode")
@@ -223,6 +229,7 @@ function Get-SettingsSchema {
             }
         }
         required = @(
+            "PetEnabled",
             "OfficialPetsCompanionMode",
             "PetHidden",
             "BindLifetimeToCodex",
@@ -250,6 +257,7 @@ function Get-SettingsLayout {
             kind = "group"
             title = (Get-UiText "QuickControlsGroup" "Quick controls")
             items = @(
+                [ordered]@{ kind = "property"; property = "PetEnabled" },
                 [ordered]@{ kind = "property"; property = "PetHidden" },
                 [ordered]@{ kind = "property"; property = "BindLifetimeToCodex" },
                 [ordered]@{ kind = "property"; property = "IdleActivityLevel" },
@@ -357,6 +365,9 @@ function Convert-SettingUpdates([object]$SetObject) {
             throw "Unsupported setting: $($property.Name)"
         }
         switch ($property.Name) {
+            "PetEnabled" {
+                $updates[$property.Name] = Convert-StrictBoolean $property.Value $property.Name
+            }
             "OfficialPetsCompanionMode" {
                 $updates[$property.Name] = Convert-StrictBoolean $property.Value $property.Name
             }
@@ -520,20 +531,32 @@ function Restart-InstalledPet([bool]$RequireInstalled = $true) {
         return
     }
     $installedFullPath = [IO.Path]::GetFullPath($installedExe)
-    Get-Process -Name "CodexDesktopPet" -ErrorAction SilentlyContinue |
+    $installedProcesses = @(Get-Process -Name "CodexDesktopPet" -ErrorAction SilentlyContinue |
         Where-Object {
             try {
                 [IO.Path]::GetFullPath($_.Path) -eq $installedFullPath
             } catch { $false }
-        } |
-        Stop-Process -Force -ErrorAction SilentlyContinue
-    Start-Sleep -Milliseconds 250
+        })
+    foreach ($process in $installedProcesses) {
+        $process | Stop-Process -Force -ErrorAction SilentlyContinue
+    }
+    foreach ($process in $installedProcesses) {
+        try { $process.WaitForExit(2000) } catch { }
+    }
+    Start-Sleep -Milliseconds 150
+    $petEnabled = [bool]((Read-SettingsState).Values.PetEnabled)
+    if (-not $petEnabled) {
+        return
+    }
     Start-Process -FilePath $installedExe -WindowStyle Hidden
 }
 
 function Show-InstalledPet {
     $state = Read-SettingsState
-    Write-SettingsState $state.Raw ([ordered]@{ PetHidden = $false })
+    Write-SettingsState $state.Raw ([ordered]@{
+        PetEnabled = $true
+        PetHidden = $false
+    })
     Restart-InstalledPet
 }
 
@@ -545,6 +568,9 @@ function Invoke-Tool([string]$Name, [object]$Arguments) {
         }
         "settings.update" {
             $updates = Convert-SettingUpdates $Arguments.set
+            if ($updates.Contains("PetEnabled") -and [bool]($updates["PetEnabled"])) {
+                $updates["PetHidden"] = $false
+            }
             $state = Read-SettingsState
             Write-SettingsState $state.Raw $updates
             $saved = (Read-SettingsState).Values
@@ -626,8 +652,8 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     supportedVersions = @("2026-07-28")
                     _meta = [ordered]@{
                         "io.modelcontextprotocol/serverInfo" = [ordered]@{
-                            name = "codex-desktop-pet-settings"
-                            version = "0.10.2"
+                            name = "codex-desktop-pet-controls"
+                            version = "0.10.3"
                         }
                     }
                     capabilities = [ordered]@{
@@ -643,8 +669,8 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                 Write-Result $request.id ([ordered]@{
                     protocolVersion = $protocolVersion
                     serverInfo = [ordered]@{
-                        name = "codex-desktop-pet-settings"
-                        version = "0.10.2"
+                        name = "codex-desktop-pet-controls"
+                        version = "0.10.3"
                     }
                     capabilities = [ordered]@{
                         tools = [ordered]@{ listChanged = $false }

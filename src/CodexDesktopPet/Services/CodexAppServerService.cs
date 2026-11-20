@@ -242,7 +242,7 @@ internal sealed class CodexAppServerService(AppSettings settings) : IDisposable
             method = "initialize",
             @params = new
             {
-                clientInfo = new { name = "codex-desktop-pet", version = "0.10.2" }
+                clientInfo = new { name = "codex-desktop-pet", version = "0.10.3" }
             }
         }, cancellationToken);
         await WaitForResponseAsync(initializeId, cancellationToken);

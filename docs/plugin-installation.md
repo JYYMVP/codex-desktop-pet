@@ -114,7 +114,7 @@ Test-Path "$env:LOCALAPPDATA\CodexDesktopPet\app\CodexDesktopPet.exe"
 设置和日志位于该目录的上一级，不会在普通卸载时删除。
 
 如果仓库已经发布带 SHA-256 文件的 GitHub Release，也可以展开插件详情页的
-`desktop-pet-settings`，点击 **安装 / 更新桌宠**。该操作只接受 GitHub HTTPS 下载地址，
+`pet-controls`，点击 **安装 / 更新桌宠**。该操作只接受 GitHub HTTPS 下载地址，
 校验 ZIP 的 SHA-256 后才会替换程序文件并启动桌宠。正式标签发布还必须通过 Windows
 Authenticode 签名检查。
 
@@ -158,7 +158,7 @@ Get-Process CodexDesktopPet | Select-Object Id, Path
 12. 在托盘展开多个 Codex 聊天的匿名活动状态，并验证“语音输入（Win+H）”只打开 Windows 听写、不会自动发送；
 13. 如有你有权使用的 ChatGPT Pets v1/v2 精灵表，可验证“导入 ChatGPT 精灵表”；只有在愿意公开素材时才确认创建 GitHub Gist 分享链接，并在测试后用“撤销公网链接”删除。
 
-展开插件详情页中的 `desktop-pet-settings` 后，应能看到“显示宠物”按钮和原生设置。桌宠未运行或隐藏后无法找回时，点击该按钮会解除隐藏并立即启动；其余设置包括隐藏桌宠开关、
+展开插件详情页中的 `pet-controls` 后，应能看到真正控制进程的“启用桌宠”开关、“显示宠物”按钮和其他原生设置。桌宠未运行或隐藏后无法找回时，点击“显示宠物”会重新启用、解除隐藏并立即启动；关闭“启用桌宠”后，Codex Hook 也不会擅自重新启动。其余设置包括隐藏桌宠开关、
 显示/隐藏快捷键（默认 `Ctrl+Alt+H`）、划词快捷键、OCR 框选快捷键、活动状态跟随、
 鼠标视线跟随、两种自动屏幕评论、评论冷却、碎碎念停留时间、置顶和 Fast mode。常用
 开关位于最上方的 **Quick controls** 分组，保存成功后桌宠会自动重启并应用设置；详情页中的
@@ -203,7 +203,7 @@ Hook 若被执行，会更新下面的健康记录（只含事件、状态、会
 Get-Content "$env:LOCALAPPDATA\CodexDesktopPet\hook-health.json"
 ```
 
-也可以在插件详情页的 `desktop-pet-settings` 中点击“检查工作状态连接”。
+也可以在插件详情页的 `pet-controls` 中点击“检查工作状态连接”。
 
 桌宠本体日志始终位于：
 
@@ -221,7 +221,7 @@ dotnet build .\src\CodexDesktopPet\CodexDesktopPet.csproj -c Release
 dotnet run --project .\tests\CodexDesktopPet.SmokeTests\CodexDesktopPet.SmokeTests.csproj -c Release
 ```
 
-应显示 22 项测试通过。它们覆盖四边/多屏拖动约束、无控制台启动、与 Codex 同启同退、插件页显示宠物动作、细分工作阶段、点击/悬停/拖动互动、多聊天活动状态聚合、快速输入框布局、
+应显示 23 项测试通过。它们覆盖四边/多屏拖动约束、无控制台启动、与 Codex 同启同退、插件页启用和显示宠物控制、细分工作阶段、点击/悬停/拖动互动、多聊天活动状态聚合、快速输入框布局、
 动画宠物包往返，以及公网分享链接与压缩包的安全校验。
 
 ## 10. 更新插件分支

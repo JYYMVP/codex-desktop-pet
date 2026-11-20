@@ -43,6 +43,7 @@ CheckActivityDescriptions();
 CheckPetInteractionMenu();
 CheckHookLifecycleContract();
 CheckShowPetActionContract();
+CheckPetEnableControlContract();
 CheckComposerLayout();
 CheckAnimatedPetPackage();
 CheckGistShareLinkValidation();
@@ -59,7 +60,7 @@ if (failures.Count > 0)
     return 1;
 }
 
-Console.WriteLine("22 placement, lifecycle, activity, interaction, plugin-control, editor, package, and share-security smoke tests passed.");
+Console.WriteLine("23 placement, lifecycle, activity, interaction, plugin-control, editor, package, and share-security smoke tests passed.");
 return 0;
 
 void Check(string name, double expectedLeft, double expectedTop, Point actual)
@@ -164,6 +165,23 @@ void CheckShowPetActionContract()
         !server.Contains("function Show-InstalledPet", StringComparison.Ordinal) ||
         !server.Contains("PetHidden = $false", StringComparison.Ordinal))
         failures.Add("plugin details must expose a Show Pet action that clears hidden state and starts the helper");
+}
+
+void CheckPetEnableControlContract()
+{
+    var server = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "settings-server.ps1"));
+    var startup = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "start-pet.ps1"));
+    using var mcp = JsonDocument.Parse(File.ReadAllText(
+        Path.Combine(AppContext.BaseDirectory, "mcp.json")));
+    var xaml = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "MainWindow.xaml"));
+
+    if (!server.Contains("PetEnabled = $true", StringComparison.Ordinal) ||
+        !server.Contains("property = \"PetEnabled\"", StringComparison.Ordinal) ||
+        !startup.Contains("PetEnabled", StringComparison.Ordinal) ||
+        !startup.Contains("startup skipped", StringComparison.Ordinal) ||
+        !mcp.RootElement.GetProperty("mcpServers").TryGetProperty("pet-controls", out _) ||
+        !xaml.Contains("彻底停用桌宠（从插件页重新启用）", StringComparison.Ordinal))
+        failures.Add("the plugin must expose a real enable switch and keep hooks from reviving an explicitly disabled pet");
 }
 
 void CheckActivitySnapshotOrdering()
