@@ -21,6 +21,8 @@ internal enum PixelTool
 internal sealed class PixelCanvasControl : FrameworkElement
 {
     private WpfColor?[,] _pixels = new WpfColor?[32, 32];
+    private WpfColor?[,]? _onionSkinPixels;
+    private double _onionSkinOpacity = 0.28;
     private bool _drawing;
     private (int X, int Y)? _lastCell;
 
@@ -56,6 +58,7 @@ internal sealed class PixelCanvasControl : FrameworkElement
         }
 
         _pixels = resized;
+        _onionSkinPixels = null;
         NotifyPixelsChanged();
     }
 
@@ -63,6 +66,32 @@ internal sealed class PixelCanvasControl : FrameworkElement
     {
         _pixels = new WpfColor?[CanvasSize, CanvasSize];
         NotifyPixelsChanged();
+    }
+
+    public WpfColor?[,] ExportPixels() => ClonePixels(_pixels);
+
+    public void LoadPixels(WpfColor?[,] pixels, bool notify = false)
+    {
+        ArgumentNullException.ThrowIfNull(pixels);
+        if (pixels.GetLength(0) != pixels.GetLength(1) || pixels.GetLength(0) is < 8 or > 64)
+            throw new ArgumentException("像素帧必须是 8×8 到 64×64 的正方形。", nameof(pixels));
+
+        _pixels = ClonePixels(pixels);
+        _onionSkinPixels = null;
+        InvalidateVisual();
+        if (notify)
+            PixelsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void SetOnionSkin(WpfColor?[,]? pixels, double opacity = 0.28)
+    {
+        _onionSkinOpacity = Math.Clamp(opacity, 0.05, 0.8);
+        _onionSkinPixels = pixels is not null &&
+                           pixels.GetLength(0) == CanvasSize &&
+                           pixels.GetLength(1) == CanvasSize
+            ? ClonePixels(pixels)
+            : null;
+        InvalidateVisual();
     }
 
     public BitmapSource ExportBitmap()
@@ -125,6 +154,20 @@ internal sealed class PixelCanvasControl : FrameworkElement
                 geometry.Top + y * geometry.Cell,
                 geometry.Cell + 0.25,
                 geometry.Cell + 0.25));
+
+            if (!color.HasValue && _onionSkinPixels?[x, y] is { } onionColor)
+            {
+                var alpha = (byte)Math.Clamp(
+                    Math.Round(onionColor.A * _onionSkinOpacity), 1, byte.MaxValue);
+                var onionBrush = new SolidColorBrush(WpfColor.FromArgb(
+                    alpha, onionColor.R, onionColor.G, onionColor.B));
+                onionBrush.Freeze();
+                drawingContext.DrawRectangle(onionBrush, null, new Rect(
+                    geometry.Left + x * geometry.Cell,
+                    geometry.Top + y * geometry.Cell,
+                    geometry.Cell + 0.25,
+                    geometry.Cell + 0.25));
+            }
         }
 
         if (geometry.Cell >= 6)
@@ -241,5 +284,14 @@ internal sealed class PixelCanvasControl : FrameworkElement
     {
         InvalidateVisual();
         PixelsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private static WpfColor?[,] ClonePixels(WpfColor?[,] source)
+    {
+        var width = source.GetLength(0);
+        var height = source.GetLength(1);
+        var clone = new WpfColor?[width, height];
+        Array.Copy(source, clone, source.Length);
+        return clone;
     }
 }

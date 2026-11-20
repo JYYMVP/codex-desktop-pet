@@ -21,6 +21,7 @@ $settingsDirectory = if ([string]::IsNullOrWhiteSpace($TestSettingsDirectory)) {
 $settingsPath = Join-Path $settingsDirectory "settings.json"
 $installedExe = Join-Path $settingsDirectory "app\CodexDesktopPet.exe"
 $hookHealthPath = Join-Path $settingsDirectory "hook-health.json"
+$installLatestScript = Join-Path $PSScriptRoot "..\scripts\install-latest-release.ps1"
 $uiTextPath = Join-Path $PSScriptRoot "settings-ui.zh-CN.json"
 $uiText = if (Test-Path -LiteralPath $uiTextPath -PathType Leaf) {
     $utf8 = [Text.UTF8Encoding]::new($false)
@@ -234,6 +235,11 @@ function Get-SettingsLayout {
                 [ordered]@{ kind = "property"; property = "StayOnTop" },
                 [ordered]@{
                     kind = "tool"
+                    tool = "pet.install-latest"
+                    description = (Get-UiText "InstallLatestDescription" "Download, verify, install, and start the latest GitHub release.")
+                },
+                [ordered]@{
+                    kind = "tool"
                     tool = "pet.activity-diagnostics"
                     description = (Get-UiText "ActivityDiagnosticsDescription" "Check whether trusted Codex lifecycle hooks are reaching the desktop pet.")
                 }
@@ -432,6 +438,13 @@ function Get-ToolDefinitions {
             }
         },
         [ordered]@{
+            name = "pet.install-latest"
+            title = (Get-UiText "InstallLatestTitle" "Install or update desktop pet")
+            description = (Get-UiText "InstallLatestDescription" "Download, verify, install, and start the latest GitHub release.")
+            inputSchema = [ordered]@{ type = "object"; additionalProperties = $false }
+            annotations = [ordered]@{ destructiveHint = $false; openWorldHint = $true }
+        },
+        [ordered]@{
             name = "pet.activity-diagnostics"
             title = (Get-UiText "ActivityDiagnosticsTitle" "Check activity connection")
             description = (Get-UiText "ActivityDiagnosticsDescription" "Check whether trusted Codex lifecycle hooks are reaching the desktop pet.")
@@ -496,6 +509,22 @@ function Invoke-Tool([string]$Name, [object]$Arguments) {
                 })
             }
         }
+        "pet.install-latest" {
+            if (-not (Test-Path -LiteralPath $installLatestScript -PathType Leaf)) {
+                throw "The release installer script is missing from the plugin package."
+            }
+            $output = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass `
+                -File $installLatestScript 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                throw (($output | Out-String).Trim())
+            }
+            return [ordered]@{
+                content = @([ordered]@{
+                    type = "text"
+                    text = (($output | Out-String).Trim())
+                })
+            }
+        }
         "pet.activity-diagnostics" {
             $message = if (-not (Test-Path -LiteralPath $hookHealthPath -PathType Leaf)) {
                 Get-UiText "ActivityDiagnosticsMissing" "No lifecycle hook event has reached the pet. Review and trust the plugin hook in Codex Settings > Hooks, then start a new turn."
@@ -535,7 +564,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     _meta = [ordered]@{
                         "io.modelcontextprotocol/serverInfo" = [ordered]@{
                             name = "codex-desktop-pet-settings"
-                            version = "0.9.1"
+                            version = "0.10.0"
                         }
                     }
                     capabilities = [ordered]@{
@@ -552,7 +581,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     protocolVersion = $protocolVersion
                     serverInfo = [ordered]@{
                         name = "codex-desktop-pet-settings"
-                        version = "0.9.1"
+                        version = "0.10.0"
                     }
                     capabilities = [ordered]@{
                         tools = [ordered]@{ listChanged = $false }

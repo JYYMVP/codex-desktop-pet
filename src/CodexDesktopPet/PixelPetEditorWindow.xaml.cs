@@ -19,9 +19,9 @@ public partial class PixelPetEditorWindow : Window
     {
         InitializeComponent();
         _library = library;
-        CanvasEditor.PixelsChanged += (_, _) => RefreshPreview();
+        CanvasEditor.PixelsChanged += CanvasEditor_PixelsChanged;
+        InitializeAnimationEditor();
         SetTool(PixelTool.Pencil);
-        RefreshPreview();
     }
 
     internal PetLibraryItem? CreatedPet { get; private set; }
@@ -34,14 +34,9 @@ public partial class PixelPetEditorWindow : Window
 
     private void SetTool(PixelTool tool)
     {
+        _currentTool = tool;
         CanvasEditor.Tool = tool;
-        EditorStatus.Text = tool switch
-        {
-            PixelTool.Pencil => "当前：画笔",
-            PixelTool.Eraser => "当前：橡皮",
-            PixelTool.Fill => "当前：填充",
-            _ => string.Empty
-        };
+        UpdateEditorStatus();
     }
 
     private void Palette_Click(object sender, RoutedEventArgs e)
@@ -83,7 +78,7 @@ public partial class PixelPetEditorWindow : Window
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
-        CanvasEditor.ResizeCanvas(size);
+        ResizeAllFrames(size);
         CanvasSizeBox.Text = size.ToString();
     }
 
@@ -102,17 +97,18 @@ public partial class PixelPetEditorWindow : Window
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
-        if (!CanvasEditor.HasArtwork)
+        if (!IdleAnimationHasArtwork())
         {
-            MessageBox.Show(this, "先在画布上画出宠物吧。", "无法创建",
+            MessageBox.Show(this, "待机动画至少要有一帧包含图像。", "无法创建",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
         try
         {
-            CreatedPet = _library.CreateStaticPet(NameBox.Text, DescriptionBox.Text,
-                CanvasEditor.CanvasSize, CanvasEditor.ExportBitmap());
+            CreatedPet = CreateAnimatedPet();
+            if (CreatedPet is null)
+                return;
             DialogResult = true;
         }
         catch (Exception ex)
@@ -122,6 +118,5 @@ public partial class PixelPetEditorWindow : Window
         }
     }
 
-    private void RefreshPreview() => PreviewImage.Source = CanvasEditor.ExportBitmap();
     private void Cancel_Click(object sender, RoutedEventArgs e) => Close();
 }

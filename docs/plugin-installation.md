@@ -13,6 +13,7 @@
 - Git；
 - .NET 8 SDK；
 - 已安装并登录的 Codex 桌面版/CLI。
+- 可选：创建或撤销公网宠物链接时需要已登录的 GitHub CLI；普通本地分享不需要。
 
 在 PowerShell 中检查：
 
@@ -22,6 +23,8 @@ dotnet --version
 codex --version
 codex login status
 ```
+
+只在测试公网宠物分享时额外运行 `gh auth status`。
 
 ## 2. 获取 `plugin` 分支
 
@@ -92,7 +95,7 @@ codex-desktop-pet@jyymvp-desktop-tools
 
 ## 6. 安装桌宠程序文件
 
-插件本身不携带编译后的 EXE，需要把第 3 步的发布结果复制到稳定位置：
+插件本身不携带编译后的 EXE。开发时可以把第 3 步的发布结果复制到稳定位置：
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
@@ -109,6 +112,11 @@ Test-Path "$env:LOCALAPPDATA\CodexDesktopPet\app\CodexDesktopPet.exe"
 ```
 
 设置和日志位于该目录的上一级，不会在普通卸载时删除。
+
+如果仓库已经发布带 SHA-256 文件的 GitHub Release，也可以展开插件详情页的
+`desktop-pet-settings`，点击 **安装 / 更新桌宠**。该操作只接受 GitHub HTTPS 下载地址，
+校验 ZIP 的 SHA-256 后才会替换程序文件并启动桌宠。正式标签发布还必须通过 Windows
+Authenticode 签名检查。
 
 ## 7. 手动启动验证
 
@@ -146,8 +154,9 @@ Get-Process CodexDesktopPet | Select-Object Id, Path
 8. 把桌宠拖到屏幕四周，确认宠物与操作胶囊始终可以找回；
 9. 在快速提问输入框继续追问；
 10. 从胶囊右侧下拉菜单查看 Codex 套餐额度；
-11. 打开“宠物库…”并进入“新建像素宠物”，验证画笔、橡皮、填充、颜色、预览和创建流程；
-   如有你有权使用的 ChatGPT Pets v1/v2 精灵表，也可验证“导入 ChatGPT 精灵表”。
+11. 打开“宠物库…”并进入“新建像素宠物”，验证画笔、橡皮、填充、颜色、动作时间线、帧复制/排序、洋葱皮、循环预览和创建流程；
+12. 在托盘展开多个 Codex 聊天的匿名活动状态，并验证“语音输入（Win+H）”只打开 Windows 听写、不会自动发送；
+13. 如有你有权使用的 ChatGPT Pets v1/v2 精灵表，可验证“导入 ChatGPT 精灵表”；只有在愿意公开素材时才确认创建 GitHub Gist 分享链接，并在测试后用“撤销公网链接”删除。
 
 展开插件详情页中的 `desktop-pet-settings` 后，应能看到原生设置，包括隐藏桌宠开关、
 显示/隐藏快捷键（默认 `Ctrl+Alt+H`）、划词快捷键、OCR 框选快捷键、活动状态跟随、
@@ -208,7 +217,8 @@ dotnet build .\src\CodexDesktopPet\CodexDesktopPet.csproj -c Release
 dotnet run --project .\tests\CodexDesktopPet.SmokeTests\CodexDesktopPet.SmokeTests.csproj -c Release
 ```
 
-应显示 12 项测试通过。它们覆盖四边/多屏拖动约束、多聊天活动状态聚合和快速输入框布局。
+应显示 16 项测试通过。它们覆盖四边/多屏拖动约束、多聊天活动状态聚合、快速输入框布局、
+动画宠物包往返，以及公网分享链接与压缩包的安全校验。
 
 ## 10. 更新插件分支
 

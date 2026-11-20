@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "codex-desktop-pet",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "description": "Run an official-style standalone Codex desktop pet with native plugin-page controls, selection shortcuts, OCR, persistent chat, screen comments, activity states, and ChatGPT Pets sprite-sheet import.",
   "author": {
     "name": "JYYMVP",

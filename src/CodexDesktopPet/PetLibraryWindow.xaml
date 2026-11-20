@@ -53,6 +53,10 @@
             <Button Content="保存资料" Click="SaveMetadata_Click" Padding="12,6" Margin="0,0,7,0" />
             <Button Content="校验" Click="Validate_Click" Padding="12,6" Margin="0,0,7,0" />
             <Button Content="导出分享包" Click="Export_Click" Padding="12,6" Margin="0,0,7,0" />
+            <Button Content="创建公网链接" Click="SharePublic_Click" Padding="12,6" Margin="0,0,7,0"
+                    ToolTip="公开发布到你的 GitHub Gist；创建前会再次确认" />
+            <Button Content="撤销公网链接" Click="UnsharePublic_Click" Padding="12,6" Margin="0,0,7,0" />
+            <Button Content="从链接领养" Click="AdoptPublic_Click" Padding="12,6" Margin="0,0,7,0" />
             <Button Content="删除" Click="Delete_Click" Padding="12,6" Margin="0,0,7,0"
                     Foreground="{StaticResource DangerBrush}" />
             <Button Content="关闭" Click="Close_Click" Padding="12,6" />

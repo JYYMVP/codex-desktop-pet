@@ -77,6 +77,7 @@
             <Grid.ContextMenu>
                 <ContextMenu x:Name="PetContextMenu">
                     <MenuItem Header="直接提问" Click="FocusQuestion_Click" />
+                    <MenuItem Header="语音输入（Win+H）" Click="VoiceTyping_Click" />
                     <MenuItem x:Name="PetOcrMenuItem" Header="OCR 框选识别（Ctrl+Alt+R）" Click="OcrRegion_Click" />
                     <MenuItem Header="查看 Codex 套餐额度" Click="ShowUsage_Click" />
                     <MenuItem Header="看一眼屏幕并吐槽" Click="LookAtScreen_Click" />

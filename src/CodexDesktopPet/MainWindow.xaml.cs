@@ -36,6 +36,7 @@ public partial class MainWindow : Window
     private GlobalHotKeyManager? _togglePetHotKey;
     private Forms.NotifyIcon? _trayIcon;
     private Forms.ToolStripMenuItem? _trayVisibilityItem;
+    private Forms.ToolStripMenuItem? _trayActivityItem;
     private CancellationTokenSource? _requestCancellation;
     private bool _allowClose;
     private bool _busy;
@@ -81,6 +82,7 @@ public partial class MainWindow : Window
                 StatusChip.Visibility = Visibility.Collapsed;
         };
         _activityMonitor.StatusChanged += ActivityMonitor_StatusChanged;
+        _activityMonitor.SnapshotsChanged += ActivityMonitor_SnapshotsChanged;
         SetAnswerMarkdown(_answerMarkdown);
     }
 
@@ -287,11 +289,16 @@ public partial class MainWindow : Window
                 $"显示 / 隐藏桌宠（{CurrentTogglePetHotKey.DisplayName}）",
                 null, (_, _) => TogglePetVisibility());
             menu.Items.Add(_trayVisibilityItem);
+            _trayActivityItem = new Forms.ToolStripMenuItem("Codex 活动");
+            menu.Items.Add(_trayActivityItem);
+            RefreshTrayActivityMenu();
         }
         if (_settings.OfficialPetsCompanionMode)
             menu.Items.Add("官方 Pets 诊断…", null, (_, _) => ShowOfficialPetsDiagnostics());
         if (!_settings.OfficialPetsCompanionMode)
         {
+            menu.Items.Add("语音输入（Windows）", null,
+                async (_, _) => await StartVoiceTypingAsync());
             menu.Items.Add($"OCR 框选识别（{CurrentOcrHotKey.DisplayName}）", null,
                 async (_, _) => await RecognizeOcrRegionAsync());
             menu.Items.Add("查看 Codex 套餐额度", null,
@@ -619,6 +626,38 @@ public partial class MainWindow : Window
         DirectQuestionBox.Focus();
     }
 
+    private async void VoiceTyping_Click(object sender, RoutedEventArgs e) =>
+        await StartVoiceTypingAsync();
+
+    private async Task StartVoiceTypingAsync()
+    {
+        try
+        {
+            if (_settings.OfficialPetsCompanionMode)
+            {
+                await _officialPets.ShowControlsAsync();
+            }
+            else
+            {
+                ShowStandalonePet(persistVisibility: true);
+                HideCommentBubble(resetPetState: false);
+                SetComposerOpen(true);
+                Activate();
+                DirectQuestionBox.Focus();
+            }
+
+            await Task.Delay(180);
+            VoiceTypingService.Start();
+            AppLog.Write("Windows voice typing opened for the pet question field.");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write($"Voice typing failed: {ex}");
+            NotifyOrShow("无法打开 Windows 语音输入。请确认系统已启用语音服务，或直接按 Win+H。",
+                PetState.Error, Forms.ToolTipIcon.Warning);
+        }
+    }
+
     private void OpenSettings_Click(object sender, RoutedEventArgs e) => OpenSettings();
 
     private void OpenPetLibrary_Click(object sender, RoutedEventArgs e) => OpenPetLibrary();
@@ -697,6 +736,7 @@ public partial class MainWindow : Window
     {
         _trayIcon?.Dispose();
         _trayIcon = null;
+        _trayActivityItem = null;
         CreateTrayIcon();
     }
 
@@ -855,6 +895,59 @@ public partial class MainWindow : Window
         _externalActivityState = state;
         if (!_busy)
             ApplyExternalActivityState();
+    }
+
+    private void ActivityMonitor_SnapshotsChanged(
+        object? sender,
+        IReadOnlyList<CodexActivitySnapshot> snapshots)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(RefreshTrayActivityMenu);
+            return;
+        }
+        RefreshTrayActivityMenu();
+    }
+
+    private void RefreshTrayActivityMenu()
+    {
+        if (_trayActivityItem is null)
+            return;
+        var snapshots = _activityMonitor.CurrentSnapshots;
+        _trayActivityItem.DropDownItems.Clear();
+        _trayActivityItem.Text = snapshots.Count == 0
+            ? "Codex 活动：空闲"
+            : $"Codex 活动（{snapshots.Count}）";
+        if (snapshots.Count == 0)
+        {
+            _trayActivityItem.DropDownItems.Add(new Forms.ToolStripMenuItem("当前没有活动聊天")
+            {
+                Enabled = false
+            });
+            return;
+        }
+
+        foreach (var snapshot in snapshots.Take(12))
+        {
+            var state = snapshot.State switch
+            {
+                CodexActivityState.Running => "工作中",
+                CodexActivityState.NeedsInput => "需要输入",
+                CodexActivityState.Ready => "已就绪",
+                CodexActivityState.Blocked => "已阻塞",
+                _ => "空闲"
+            };
+            var shortHash = snapshot.SessionHash[..Math.Min(6, snapshot.SessionHash.Length)]
+                .ToUpperInvariant();
+            _trayActivityItem.DropDownItems.Add(new Forms.ToolStripMenuItem(
+                $"{shortHash} · {state} · {snapshot.UpdatedAtUtc.ToLocalTime():HH:mm:ss}")
+            {
+                Enabled = false,
+                ToolTipText = string.IsNullOrWhiteSpace(snapshot.Event)
+                    ? "Codex 生命周期状态"
+                    : snapshot.Event
+            });
+        }
     }
 
     private void ApplyExternalActivityState()

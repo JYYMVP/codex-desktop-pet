@@ -16,8 +16,10 @@
 - 拖动桌宠可到达虚拟桌面的四周（包括屏幕顶边），同时保证宠物和操作胶囊仍可找回
 - 请求处理中显示敲键盘工作动画；桌面吐槽使用独立、自动收起的小气泡
 - 通过受信任的 Codex 生命周期 Hooks 跟随多个聊天的“工作中 / 需要输入 / 已就绪 / 已阻塞”状态
+- 系统托盘按优先级展示多个 Codex 聊天的匿名活动状态，并提供 Windows 语音输入（`Win + H`）入口；识别文字不会自动发送
 - 内置 64×64 水滴小精灵，以及可替换的透明 PNG 像素宠物包
-- 本地宠物库：内置 8–64 网格像素编辑器，以及导入/领养、校验、选用、编辑资料、导出和删除
+- 本地宠物库：内置 8–64 网格像素动画编辑器，支持多动作时间线、帧增删/复制/排序、洋葱皮、循环预览和帧时长，以及导入/领养、校验、选用、编辑资料、导出和删除
+- 可撤销公网分享：确认公开范围和素材权利后创建用户自己的 GitHub Gist 链接，也可从链接领养；撤销会删除对应 Gist
 - 本地导入 ChatGPT Pets v1/v2 精灵表，自动映射待机、工作、等待输入、失败、检查和方向动画；官方素材不会随仓库分发
 - 气泡内直接提问；每只宠物使用独立、持久的 Codex 对话线程
 - 可在 Codex 中打开宠物对话，或保留旧历史并随时新建一条对话
@@ -32,7 +34,8 @@
 
 ## 构建与运行
 
-需要 Windows 10/11、.NET 8 SDK，以及已经登录的 Codex CLI。
+需要 Windows 10/11、.NET 8 SDK，以及已经登录的 Codex CLI。只有创建或撤销公网宠物链接时
+才需要已登录的 GitHub CLI（`gh auth login`）；本地 `.codexpet` 分享不需要 GitHub。
 
 ```powershell
 dotnet build .\CodexDesktopPet.sln
@@ -89,6 +92,7 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 鼠标视线跟随、自动碎碎念、置顶、快捷键和 Fast mode；保存后桌宠会自动重启应用设置。
 “常用开关”中的“检查工作状态连接”会显示最近一次 Hook 事件；若从未收到事件，会明确提示到
 **Settings → Hooks** 审核当前插件 Hook。
+“安装 / 更新桌宠”会从 GitHub Release 下载 Windows ZIP 和 SHA-256 校验文件，验证通过后再安装并启动。
 也可以右键桌宠选择“设置…”，调整回答语言、超时、回答长度、推理强度和宠物包路径等高级项。
 高级设置窗口支持滚动，并会禁用与所选模式冲突的选项。划词助手默认使用 `none` 推理强度，并为其 Codex 子进程关闭
 hooks、plugins、apps 和 MCP，避免桌宠插件递归启动及无关工具初始化。桌宠使用
@@ -111,8 +115,8 @@ dotnet build .\src\CodexDesktopPet\CodexDesktopPet.csproj -c Release
 dotnet run --project .\tests\CodexDesktopPet.SmokeTests\CodexDesktopPet.SmokeTests.csproj -c Release
 ```
 
-测试覆盖桌宠在单屏/负坐标多屏环境中的四边约束、多个 Codex 聊天同时活动时的状态优先级，
-以及快速输入框保持为宠物上方独立 Popup 的布局约束。
+测试覆盖桌宠在单屏/负坐标多屏环境中的四边约束、多个 Codex 聊天同时活动时的状态优先级、
+快速输入框保持为宠物上方独立 Popup 的布局约束、动画宠物包往返，以及公网分享链接和压缩包的安全校验。
 
 ## Codex 集成方式
 
@@ -130,12 +134,12 @@ dotnet run --project .\tests\CodexDesktopPet.SmokeTests\CodexDesktopPet.SmokeTes
 只发送框选区域，并在完成、失败或取消后删除源图和区域图。宠物对话由 Codex 线程持久保存；
 “新建对话”只切换到新线程，不删除旧历史。
 
-## 计划
+## 发布与签名
 
-- 像素宠物编辑器的动画时间线、洋葱皮和更多动作
-- 可撤销的公网宠物分享链接（需要独立后端；当前使用 `.codexpet` 分享包）
-- 多对话活动托盘和语音入口
-- 签名安装包与插件目录中的点击安装
+`scripts/build-release.ps1` 会生成自包含的 Windows ZIP、Inno Setup 安装包及其 SHA-256 文件。
+`.github/workflows/release.yml` 可手动构建预览产物；推送 `v*` 标签时，工作流要求配置
+`WINDOWS_SIGNING_CERTIFICATE_BASE64` 和 `WINDOWS_SIGNING_CERTIFICATE_PASSWORD`，并在发布前验证
+安装包的 Authenticode 签名。没有真实证书时不会把无签名安装包伪装成可信正式版。
 
 ## License
 

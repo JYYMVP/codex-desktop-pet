@@ -14,6 +14,7 @@ public partial class PetLibraryWindow : Window
 {
     private readonly AppSettings _settings;
     private readonly PetLibraryService _library = new();
+    private readonly GitHubGistPetShareService _shareService = new();
 
     internal PetLibraryWindow(AppSettings settings)
     {
@@ -151,10 +152,85 @@ public partial class PetLibraryWindow : Window
         });
     }
 
+    private async void SharePublic_Click(object sender, RoutedEventArgs e)
+    {
+        if (SelectedPet is not { IsBuiltIn: false } pet)
+            return;
+        if (_shareService.FindShare(pet.Id) is { } existing)
+        {
+            TryCopy(existing.Url);
+            MessageBox.Show(this, $"这个宠物已经公开分享，链接已复制：\n{existing.Url}",
+                "公网分享", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var confirmation =
+            $"将“{pet.Name}”的当前快照公开发布到你的 GitHub Gist。\n\n" +
+            "任何获得链接的人都能下载素材；链接不包含你的本地路径或 Codex 对话，但 Gist 会显示你的 GitHub 用户名。\n\n" +
+            "请确认你有权公开这些角色素材，并确认公开受众。是否继续？";
+        if (MessageBox.Show(this, confirmation, "创建公网宠物分享",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            return;
+
+        await TryActionAsync(async () =>
+        {
+            var record = await _shareService.ShareAsync(_library, pet);
+            TryCopy(record.Url);
+            MessageBox.Show(this,
+                $"公网链接已创建并复制：\n{record.Url}\n\n可随时用“撤销公网链接”使其失效。",
+                "公网分享", MessageBoxButton.OK, MessageBoxImage.Information);
+        });
+    }
+
+    private async void UnsharePublic_Click(object sender, RoutedEventArgs e)
+    {
+        if (SelectedPet is not { IsBuiltIn: false } pet)
+            return;
+        var record = _shareService.FindShare(pet.Id);
+        if (record is null)
+        {
+            MessageBox.Show(this, "这个宠物没有由本机创建的公网分享链接。", "撤销公网分享",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (MessageBox.Show(this,
+                $"永久删除对应的 GitHub Gist 并使链接失效？\n\n{record.Url}",
+                "撤销公网分享", MessageBoxButton.YesNo, MessageBoxImage.Warning) !=
+            MessageBoxResult.Yes)
+            return;
+
+        await TryActionAsync(async () =>
+        {
+            await _shareService.UnshareAsync(record);
+            MessageBox.Show(this, "公网分享已撤销。", "撤销公网分享",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        });
+    }
+
+    private async void AdoptPublic_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new PetShareLinkWindow { Owner = this };
+        if (dialog.ShowDialog() != true)
+            return;
+        await TryActionAsync(async () =>
+        {
+            var adopted = await _shareService.AdoptAsync(_library, dialog.ShareUrl);
+            RefreshList(adopted.Id);
+            MessageBox.Show(this, $"已从公网链接领养“{adopted.Name}”。", "宠物库",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        });
+    }
+
     private void Delete_Click(object sender, RoutedEventArgs e)
     {
         if (SelectedPet is not { IsBuiltIn: false } pet)
             return;
+        if (_shareService.FindShare(pet.Id) is { } activeShare)
+        {
+            MessageBox.Show(this,
+                $"这个宠物仍有公网分享链接，请先撤销再删除本地文件：\n{activeShare.Url}",
+                "删除宠物", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
         if (MessageBox.Show(this, $"永久删除“{pet.Name}”及其本地动画文件？",
                 "删除宠物", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             return;
@@ -181,5 +257,31 @@ public partial class PetLibraryWindow : Window
             AppLog.Write($"Pet library operation failed: {ex}");
             MessageBox.Show(this, ex.Message, "宠物库", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private async Task TryActionAsync(Func<Task> action)
+    {
+        try
+        {
+            IsEnabled = false;
+            System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+            await action();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write($"Pet sharing operation failed: {ex}");
+            MessageBox.Show(this, ex.Message, "宠物分享", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            System.Windows.Input.Mouse.OverrideCursor = null;
+            IsEnabled = true;
+        }
+    }
+
+    private static void TryCopy(string value)
+    {
+        try { System.Windows.Clipboard.SetText(value); }
+        catch (Exception ex) { AppLog.Write($"Copy pet share URL failed: {ex.Message}"); }
     }
 }

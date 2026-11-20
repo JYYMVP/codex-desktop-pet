@@ -32,8 +32,14 @@ The plugin's structured settings include `HotKey` for selected text, `OcrHotKey`
 
 The local pet library can clean-room import an existing ChatGPT Pets v1 or v2 sprite sheet from PNG or a Windows-decodable WebP. Validate its documented dimensions, required cells, transparent unused cells, and alpha background before extracting frames. Never download or redistribute built-in artwork on the user's behalf unless the user has separately established permission; importing a local file does not grant redistribution rights.
 
+The pixel editor supports independent animation timelines for every documented action, frame duplication and reordering, per-frame previews, onion skinning, loop preview, and a shared frame duration. Keep at least one non-empty Idle frame. Public sharing is opt-in and uses a user-owned public GitHub Gist; show the audience and redistribution confirmation before creation, and require a second explicit confirmation before deleting the Gist to revoke the link. Never publish a pet merely because the user opened the library.
+
+The system tray shows a privacy-preserving activity list for concurrent Codex chats using only session hashes and state metadata. **Voice input (Win+H)** focuses the pet input and invokes Windows voice typing; it never sends the resulting text automatically.
+
+Use **Install / update desktop pet** on the plugin page to download the latest GitHub Release ZIP, verify its SHA-256 sidecar, install it under `%LOCALAPPDATA%/CodexDesktopPet/app`, and start it. A public tagged release must have a valid Windows Authenticode signature; local source builds may be unsigned.
+
 `FollowCodexActivity` enables official-style activity mirroring for the standalone pet. Updating these hooks changes their trust hash, so tell the user to review and trust the plugin hooks again in **Settings → Hooks**. If they decline, direct questions, OCR, and screen comments still work, but activity from other Codex chats will not animate the pet.
 
-The standalone pet can be dragged to the top and other edges of the Windows virtual desktop while keeping the pet and action dock recoverable. Quick input uses a separate popup anchored above the pet; Windows flips it below near the top edge. If the user reports that input covers the pet, verify they are running version 0.9.1 or later before changing layout offsets.
+The standalone pet can be dragged to the top and other edges of the Windows virtual desktop while keeping the pet and action dock recoverable. Quick input uses a separate popup anchored above the pet; Windows flips it below near the top edge. If the user reports that input covers the pet, verify they are running version 0.10.0 or later before changing layout offsets.
 
 When the user asks about conversation memory, explain that each pet uses its own persistent Codex thread. “New pet conversation” switches to a new thread without deleting old Codex history. Screen comments use a separate ephemeral thread so they do not pollute the pet conversation.

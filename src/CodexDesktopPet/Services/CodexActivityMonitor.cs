@@ -13,6 +13,12 @@ internal enum CodexActivityState
     Blocked
 }
 
+internal sealed record CodexActivitySnapshot(
+    string SessionHash,
+    CodexActivityState State,
+    string Event,
+    DateTime UpdatedAtUtc);
+
 /// <summary>
 /// Aggregates the small per-session status files written by the plugin's
 /// lifecycle hooks. It deliberately reads only status metadata; it never reads
@@ -26,6 +32,7 @@ internal sealed class CodexActivityMonitor : IDisposable
         Interval = TimeSpan.FromMilliseconds(700)
     };
     private CodexActivityState _lastState = CodexActivityState.Idle;
+    private string _lastSnapshotSignature = string.Empty;
 
     public CodexActivityMonitor()
     {
@@ -33,6 +40,9 @@ internal sealed class CodexActivityMonitor : IDisposable
     }
 
     public event EventHandler<CodexActivityState>? StatusChanged;
+    public event EventHandler<IReadOnlyList<CodexActivitySnapshot>>? SnapshotsChanged;
+
+    public IReadOnlyList<CodexActivitySnapshot> CurrentSnapshots { get; private set; } = [];
 
     public static string ActivityDirectory => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -48,6 +58,7 @@ internal sealed class CodexActivityMonitor : IDisposable
     public void Stop()
     {
         _timer.Stop();
+        PublishSnapshots([]);
         Publish(CodexActivityState.Idle);
     }
 
@@ -56,15 +67,14 @@ internal sealed class CodexActivityMonitor : IDisposable
         try
         {
             Directory.CreateDirectory(ActivityDirectory);
-            var states = Directory.EnumerateFiles(ActivityDirectory, "*.json")
+            var snapshots = OrderSnapshots(Directory.EnumerateFiles(ActivityDirectory, "*.json")
                 .Select(ReadState)
                 .Where(snapshot => snapshot is not null)
-                .Cast<ActivitySnapshot>()
-                .Where(snapshot => DateTime.UtcNow - snapshot.UpdatedAtUtc <= StaleAfter)
-                .Select(snapshot => snapshot.State)
-                .ToArray();
+                .Cast<CodexActivitySnapshot>()
+                .Where(snapshot => DateTime.UtcNow - snapshot.UpdatedAtUtc <= StaleAfter));
 
-            Publish(Aggregate(states));
+            PublishSnapshots(snapshots);
+            Publish(Aggregate(snapshots.Select(snapshot => snapshot.State)));
         }
         catch (Exception ex)
         {
@@ -86,7 +96,13 @@ internal sealed class CodexActivityMonitor : IDisposable
                         : CodexActivityState.Idle;
     }
 
-    private static ActivitySnapshot? ReadState(string path)
+    internal static CodexActivitySnapshot[] OrderSnapshots(
+        IEnumerable<CodexActivitySnapshot> snapshots) => snapshots
+        .OrderBy(snapshot => ActivityPriority(snapshot.State))
+        .ThenByDescending(snapshot => snapshot.UpdatedAtUtc)
+        .ToArray();
+
+    private static CodexActivitySnapshot? ReadState(string path)
     {
         try
         {
@@ -100,13 +116,42 @@ internal sealed class CodexActivityMonitor : IDisposable
             if (!root.TryGetProperty("updatedAtUtc", out var updatedElement) ||
                 !DateTime.TryParse(updatedElement.GetString(), out var updatedAt))
                 return null;
-            return new ActivitySnapshot(state, updatedAt.ToUniversalTime());
+            var sessionHash = root.TryGetProperty("sessionHash", out var hashElement)
+                ? hashElement.GetString()
+                : null;
+            if (string.IsNullOrWhiteSpace(sessionHash))
+                sessionHash = Path.GetFileNameWithoutExtension(path);
+            var eventName = root.TryGetProperty("event", out var eventElement)
+                ? eventElement.GetString() ?? string.Empty
+                : string.Empty;
+            return new CodexActivitySnapshot(
+                sessionHash, state, eventName, updatedAt.ToUniversalTime());
         }
         catch
         {
             return null;
         }
     }
+
+    private void PublishSnapshots(IReadOnlyList<CodexActivitySnapshot> snapshots)
+    {
+        var signature = string.Join('|', snapshots.Select(snapshot =>
+            $"{snapshot.SessionHash}:{snapshot.State}:{snapshot.Event}:{snapshot.UpdatedAtUtc.Ticks}"));
+        if (string.Equals(signature, _lastSnapshotSignature, StringComparison.Ordinal))
+            return;
+        _lastSnapshotSignature = signature;
+        CurrentSnapshots = snapshots;
+        SnapshotsChanged?.Invoke(this, snapshots);
+    }
+
+    private static int ActivityPriority(CodexActivityState state) => state switch
+    {
+        CodexActivityState.NeedsInput => 0,
+        CodexActivityState.Running => 1,
+        CodexActivityState.Blocked => 2,
+        CodexActivityState.Ready => 3,
+        _ => 4
+    };
 
     private void Publish(CodexActivityState state)
     {
@@ -119,5 +164,4 @@ internal sealed class CodexActivityMonitor : IDisposable
 
     public void Dispose() => _timer.Stop();
 
-    private sealed record ActivitySnapshot(CodexActivityState State, DateTime UpdatedAtUtc);
 }

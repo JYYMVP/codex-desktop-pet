@@ -17,14 +17,25 @@ internal sealed class PetLibraryService
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = true
     };
 
-    public string LibraryRoot { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "CodexDesktopPet", "pets");
+    public string LibraryRoot { get; }
 
-    public PetLibraryService() => Directory.CreateDirectory(LibraryRoot);
+    public PetLibraryService() : this(Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "CodexDesktopPet", "pets"))
+    {
+    }
+
+    internal PetLibraryService(string libraryRoot)
+    {
+        if (string.IsNullOrWhiteSpace(libraryRoot))
+            throw new ArgumentException("宠物库路径不能为空。", nameof(libraryRoot));
+        LibraryRoot = Path.GetFullPath(libraryRoot);
+        Directory.CreateDirectory(LibraryRoot);
+    }
 
     public IReadOnlyList<PetLibraryItem> ListPets()
     {
@@ -279,12 +290,35 @@ internal sealed class PetLibraryService
     }
 
     public PetLibraryItem CreateStaticPet(string name, string description, int canvasSize,
-        BitmapSource bitmap)
+        BitmapSource bitmap) => CreatePixelPet(name, description, canvasSize, 360,
+        new Dictionary<PetState, IReadOnlyList<BitmapSource>>
+        {
+            [PetState.Idle] = [bitmap]
+        });
+
+    public PetLibraryItem CreatePixelPet(
+        string name,
+        string description,
+        int canvasSize,
+        int frameDurationMs,
+        IReadOnlyDictionary<PetState, IReadOnlyList<BitmapSource>> states)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new InvalidDataException("请给宠物起一个名字。");
-        if (canvasSize is < 8 or > 64 || bitmap.PixelWidth != canvasSize || bitmap.PixelHeight != canvasSize)
+        if (canvasSize is < 8 or > 64)
             throw new InvalidDataException("画布必须是 8×8 到 64×64 的正方形。");
+        if (!states.TryGetValue(PetState.Idle, out var idleFrames) || idleFrames.Count == 0)
+            throw new InvalidDataException("像素宠物至少需要一个待机帧。");
+        if (states.Count > Enum.GetValues<PetState>().Length ||
+            states.Any(pair => pair.Value.Count is < 1 or > 64))
+            throw new InvalidDataException("每个动作需要 1 到 64 帧。");
+        foreach (var frame in states.SelectMany(pair => pair.Value))
+        {
+            if (frame.PixelWidth != canvasSize || frame.PixelHeight != canvasSize)
+                throw new InvalidDataException($"所有帧都必须是 {canvasSize}×{canvasSize} 像素。");
+        }
+        if (!idleFrames.Any(HasArtwork))
+            throw new InvalidDataException("待机动画至少需要一个包含图像的帧。");
 
         var baseId = NormalizeId(name);
         if (string.IsNullOrWhiteSpace(baseId))
@@ -295,12 +329,21 @@ internal sealed class PetLibraryService
         Directory.CreateDirectory(destination);
         try
         {
-            var framePath = Path.Combine(destination, "idle.png");
-            using (var stream = File.Create(framePath))
+            var manifestStates = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (state, frames) in states.OrderBy(pair => pair.Key))
             {
-                var encoder = new PngBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create(bitmap));
-                encoder.Save(stream);
+                var stateName = ToManifestStateName(state);
+                var frameFiles = new string[frames.Count];
+                for (var index = 0; index < frames.Count; index++)
+                {
+                    var relative = $"{stateName}-{index + 1:D2}.png";
+                    using var stream = File.Create(Path.Combine(destination, relative));
+                    var encoder = new PngBitmapEncoder();
+                    encoder.Frames.Add(BitmapFrame.Create(frames[index]));
+                    encoder.Save(stream);
+                    frameFiles[index] = relative;
+                }
+                manifestStates[stateName] = frameFiles;
             }
 
             var manifest = new PetManifest
@@ -309,20 +352,18 @@ internal sealed class PetLibraryService
                 Name = name.Trim(),
                 Description = description.Trim(),
                 CanvasSize = canvasSize,
-                FrameDurationMs = 360,
+                FrameDurationMs = Math.Clamp(frameDurationMs, 80, 2000),
                 PixelArt = true,
-                SourceFormat = "codex-pixel-pet-v1",
-                States = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
-                {
-                    ["idle"] = ["idle.png"]
-                }
+                SourceFormat = "codex-pixel-pet-v2",
+                States = manifestStates
             };
             WriteManifest(destination, manifest);
             var validation = Validate(destination);
             if (!validation.IsValid)
                 throw new InvalidDataException(string.Join(Environment.NewLine, validation.Errors));
 
-            AppLog.Write($"Created pixel pet {id} on a {canvasSize}x{canvasSize} canvas");
+            AppLog.Write($"Created animated pixel pet {id}. Canvas={canvasSize}; " +
+                         $"States={states.Count}; Frames={states.Sum(pair => pair.Value.Count)}");
             return new PetLibraryItem(id, manifest.Name, manifest.Description ?? string.Empty, destination);
         }
         catch
@@ -331,6 +372,22 @@ internal sealed class PetLibraryService
                 Directory.Delete(destination, true);
             throw;
         }
+    }
+
+    private static bool HasArtwork(BitmapSource bitmap)
+    {
+        var converted = new FormatConvertedBitmap(bitmap, PixelFormats.Bgra32, null, 0);
+        var stride = converted.PixelWidth * 4;
+        var pixels = new byte[stride * converted.PixelHeight];
+        converted.CopyPixels(pixels, stride, 0);
+        return Enumerable.Range(0, converted.PixelWidth * converted.PixelHeight)
+            .Any(index => pixels[index * 4 + 3] > 0);
+    }
+
+    private static string ToManifestStateName(PetState state)
+    {
+        var value = state.ToString();
+        return char.ToLowerInvariant(value[0]) + value[1..];
     }
 
     public void UpdateMetadata(PetLibraryItem item, string name, string description)
