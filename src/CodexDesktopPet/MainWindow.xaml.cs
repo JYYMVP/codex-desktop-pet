@@ -30,6 +30,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _commentBubbleTimer = new();
     private readonly DispatcherTimer _interactionAnimationTimer = new();
     private readonly DispatcherTimer _pointerLookTimer = new();
+    private readonly DispatcherTimer _statusChipTimer = new();
     private GlobalHotKeyManager? _hotKey;
     private GlobalHotKeyManager? _ocrHotKey;
     private GlobalHotKeyManager? _togglePetHotKey;
@@ -41,6 +42,8 @@ public partial class MainWindow : Window
     private string _answerMarkdown =
         "我已经就位。选中文字后按 Ctrl+Alt+Q，我会给出简要回答。";
     private System.Windows.Point? _petPressPosition;
+    private System.Windows.Point? _dragStartPointerScreen;
+    private System.Windows.Point _dragStartWindowPosition;
     private bool _petDragged;
     private string? _lastForegroundIdentity;
     private string? _pendingForegroundIdentity;
@@ -70,13 +73,21 @@ public partial class MainWindow : Window
         };
         _pointerLookTimer.Interval = TimeSpan.FromMilliseconds(100);
         _pointerLookTimer.Tick += (_, _) => UpdatePointerLook();
+        _statusChipTimer.Interval = TimeSpan.FromSeconds(2.2);
+        _statusChipTimer.Tick += (_, _) =>
+        {
+            _statusChipTimer.Stop();
+            if (_currentPetState == PetState.Ready)
+                StatusChip.Visibility = Visibility.Collapsed;
+        };
         _activityMonitor.StatusChanged += ActivityMonitor_StatusChanged;
         SetAnswerMarkdown(_answerMarkdown);
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        AppLog.Write($"Window loaded. Version={Environment.Version}; Settings={AppSettings.SettingsPath}");
+        var appVersion = typeof(MainWindow).Assembly.GetName().Version?.ToString() ?? "unknown";
+        AppLog.Write($"Window loaded. Version={appVersion}; Settings={AppSettings.SettingsPath}");
         Left = SystemParameters.WorkArea.Right - ActualWidth - 18;
         Top = SystemParameters.WorkArea.Bottom - ActualHeight - 18;
         Topmost = _settings.StayOnTop;
@@ -175,7 +186,7 @@ public partial class MainWindow : Window
     private void ShowMessage(string message, PetState state)
     {
         HideCommentBubble(resetPetState: false);
-        ComposerPanel.Visibility = Visibility.Collapsed;
+        SetComposerOpen(false);
         SetAnswerMarkdown(message);
         AnswerPanel.Visibility = Visibility.Visible;
         SetPetState(state);
@@ -187,7 +198,7 @@ public partial class MainWindow : Window
         _commentBubbleTimer.Interval = TimeSpan.FromSeconds(
             Math.Clamp(_settings.CommentBubbleSeconds, 4, 60));
         AnswerPanel.Visibility = Visibility.Collapsed;
-        ComposerPanel.Visibility = Visibility.Collapsed;
+        SetComposerOpen(false);
         CommentText.Text = comment.Trim();
         CommentBubble.Visibility = Visibility.Visible;
         SetPetState(PetState.Ready);
@@ -223,9 +234,12 @@ public partial class MainWindow : Window
         };
 
         StatusText.Text = status;
-        StatusChip.Visibility = state is PetState.Idle or PetState.Ready
+        _statusChipTimer.Stop();
+        StatusChip.Visibility = string.IsNullOrWhiteSpace(status)
             ? Visibility.Collapsed
             : Visibility.Visible;
+        if (state == PetState.Ready)
+            _statusChipTimer.Start();
         GlowRing.Stroke = new SolidColorBrush(color) { Opacity = 0.65 };
         _petController.SetState(state);
         if (state == PetState.Thinking)
@@ -338,6 +352,7 @@ public partial class MainWindow : Window
             _settings.PetHidden = true;
             _settings.Save();
         }
+        SetComposerOpen(false);
         Hide();
     }
 
@@ -396,6 +411,7 @@ public partial class MainWindow : Window
         {
             if (wasVisible)
             {
+                SetComposerOpen(false);
                 Hide();
                 await Task.Delay(140);
             }
@@ -544,7 +560,7 @@ public partial class MainWindow : Window
             return;
 
         _busy = true;
-        ComposerPanel.Visibility = Visibility.Collapsed;
+        SetComposerOpen(false);
         AnswerPanel.Visibility = Visibility.Visible;
         DirectQuestionBox.Clear();
         try
@@ -596,10 +612,8 @@ public partial class MainWindow : Window
     private void FocusQuestion_Click(object sender, RoutedEventArgs e)
     {
         HideCommentBubble(resetPetState: false);
-        ComposerPanel.Visibility = ComposerPanel.Visibility == Visibility.Visible
-            ? Visibility.Collapsed
-            : Visibility.Visible;
-        if (ComposerPanel.Visibility != Visibility.Visible)
+        SetComposerOpen(!ComposerPopup.IsOpen);
+        if (!ComposerPopup.IsOpen)
             return;
         Activate();
         DirectQuestionBox.Focus();
@@ -727,7 +741,7 @@ public partial class MainWindow : Window
             automatic && (!IsVisible || _settings.PetHidden) ||
             automatic && CommentBubble.Visibility == Visibility.Visible ||
             automatic && (AnswerPanel.Visibility == Visibility.Visible ||
-                          ComposerPanel.Visibility == Visibility.Visible) ||
+                          ComposerPopup.IsOpen) ||
             trigger == ScreenCommentTrigger.Periodic && !_settings.ScreenWatchingEnabled ||
             trigger == ScreenCommentTrigger.WindowChange && !_settings.WindowChangeCommentsEnabled)
         {
@@ -736,7 +750,7 @@ public partial class MainWindow : Window
                              $"Visible={IsVisible}; Hidden={_settings.PetHidden}; " +
                              $"BubbleVisible={CommentBubble.Visibility == Visibility.Visible}; " +
                              $"AnswerVisible={AnswerPanel.Visibility == Visibility.Visible}; " +
-                             $"ComposerVisible={ComposerPanel.Visibility == Visibility.Visible}; Busy={_busy}");
+                             $"ComposerVisible={ComposerPopup.IsOpen}; Busy={_busy}");
             return;
         }
 
@@ -1005,6 +1019,8 @@ public partial class MainWindow : Window
     private void PetBody_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         _petPressPosition = e.GetPosition(this);
+        _dragStartPointerScreen = GetPointerScreenPosition();
+        _dragStartWindowPosition = new System.Windows.Point(Left, Top);
         _petDragged = false;
         PetBody.CaptureMouse();
         e.Handled = true;
@@ -1016,17 +1032,24 @@ public partial class MainWindow : Window
             return;
 
         var current = e.GetPosition(this);
-        var movedFarEnough =
-            Math.Abs(current.X - _petPressPosition.Value.X) >= SystemParameters.MinimumHorizontalDragDistance ||
-            Math.Abs(current.Y - _petPressPosition.Value.Y) >= SystemParameters.MinimumVerticalDragDistance;
-        if (!movedFarEnough)
-            return;
+        if (!_petDragged)
+        {
+            var movedFarEnough =
+                Math.Abs(current.X - _petPressPosition.Value.X) >= SystemParameters.MinimumHorizontalDragDistance ||
+                Math.Abs(current.Y - _petPressPosition.Value.Y) >= SystemParameters.MinimumVerticalDragDistance;
+            if (!movedFarEnough)
+                return;
+            _petDragged = true;
+            SetComposerOpen(false);
+        }
 
-        _petDragged = true;
-        _petPressPosition = null;
-        PetBody.ReleaseMouseCapture();
-        try { DragMove(); }
-        catch (InvalidOperationException) { }
+        if (_dragStartPointerScreen is not null)
+        {
+            var pointer = GetPointerScreenPosition();
+            MoveWindowKeepingControlsVisible(
+                _dragStartWindowPosition.X + pointer.X - _dragStartPointerScreen.Value.X,
+                _dragStartWindowPosition.Y + pointer.Y - _dragStartPointerScreen.Value.Y);
+        }
         e.Handled = true;
     }
 
@@ -1047,22 +1070,63 @@ public partial class MainWindow : Window
                 AnswerPanel.Visibility = Visibility.Collapsed;
             else
             {
-                ComposerPanel.Visibility = ComposerPanel.Visibility == Visibility.Visible
-                    ? Visibility.Collapsed
-                    : Visibility.Visible;
-                if (ComposerPanel.Visibility == Visibility.Visible)
+                SetComposerOpen(!ComposerPopup.IsOpen);
+                if (ComposerPopup.IsOpen)
                 {
                     Activate();
                     DirectQuestionBox.Focus();
                 }
             }
             AppLog.Write($"Pet clicked. AnswerVisible={AnswerPanel.Visibility == Visibility.Visible}; " +
-                         $"ComposerVisible={ComposerPanel.Visibility == Visibility.Visible}");
+                         $"ComposerVisible={ComposerPopup.IsOpen}");
         }
 
         _petPressPosition = null;
+        _dragStartPointerScreen = null;
         _petDragged = false;
         e.Handled = true;
+    }
+
+    private void SetComposerOpen(bool open)
+    {
+        ComposerPopup.IsOpen = open;
+        ActionDock.Visibility = open ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private System.Windows.Point GetPointerScreenPosition()
+    {
+        var cursor = Forms.Cursor.Position;
+        var source = PresentationSource.FromVisual(this);
+        return source?.CompositionTarget?.TransformFromDevice.Transform(
+                   new System.Windows.Point(cursor.X, cursor.Y))
+               ?? new System.Windows.Point(cursor.X, cursor.Y);
+    }
+
+    private void MoveWindowKeepingControlsVisible(double requestedLeft, double requestedTop)
+    {
+        var petTopLeft = PetBody.TranslatePoint(new System.Windows.Point(0, 0), this);
+        var dockTopLeft = ActionDock.TranslatePoint(new System.Windows.Point(0, 0), this);
+        var contentLeft = Math.Min(petTopLeft.X, dockTopLeft.X);
+        var contentTop = Math.Min(petTopLeft.Y, dockTopLeft.Y);
+        var contentRight = Math.Max(
+            petTopLeft.X + PetBody.ActualWidth,
+            dockTopLeft.X + ActionDock.ActualWidth);
+        var contentBottom = Math.Max(
+            petTopLeft.Y + PetBody.ActualHeight,
+            dockTopLeft.Y + ActionDock.ActualHeight);
+
+        var position = WindowPlacement.ClampToDesktop(
+            requestedLeft,
+            requestedTop,
+            new Rect(contentLeft, contentTop, contentRight - contentLeft, contentBottom - contentTop),
+            new Rect(
+                SystemParameters.VirtualScreenLeft,
+                SystemParameters.VirtualScreenTop,
+                SystemParameters.VirtualScreenWidth,
+                SystemParameters.VirtualScreenHeight));
+
+        Left = position.X;
+        Top = position.Y;
     }
 
     private void Window_Closing(object? sender, CancelEventArgs e)
@@ -1087,6 +1151,8 @@ public partial class MainWindow : Window
         _commentBubbleTimer.Stop();
         _interactionAnimationTimer.Stop();
         _pointerLookTimer.Stop();
+        _statusChipTimer.Stop();
+        ComposerPopup.IsOpen = false;
         _activityMonitor.Dispose();
         _codex.Dispose();
         _petController.Dispose();

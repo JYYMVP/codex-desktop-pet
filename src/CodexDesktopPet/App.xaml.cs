@@ -21,7 +21,9 @@ public partial class App : System.Windows.Application
         }
 
         DispatcherUnhandledException += OnDispatcherUnhandledException;
-        new MainWindow().Show();
+        var mainWindow = new MainWindow();
+        MainWindow = mainWindow;
+        mainWindow.Show();
     }
 
     protected override void OnExit(ExitEventArgs e)

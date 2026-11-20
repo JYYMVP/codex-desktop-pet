@@ -12,7 +12,8 @@
 - 通过本机 Codex 登录状态回答，不依赖 Harness
 - 只在按下快捷键时读取当前选区；屏幕观察默认关闭，需主动开启
 - 接近官方 Pets 的轻量悬浮形态：96px 宠物、三段式半透明胶囊、独立输入框、回答卡片和系统托盘
-- 单击桌宠展开快速提问，拖动桌宠可调整位置；问答与桌面碎碎念使用不同气泡
+- 单击桌宠展开快速提问；输入框独立显示在宠物上方，贴近屏幕顶边时自动翻到下方，不再遮住宠物
+- 拖动桌宠可到达虚拟桌面的四周（包括屏幕顶边），同时保证宠物和操作胶囊仍可找回
 - 请求处理中显示敲键盘工作动画；桌面吐槽使用独立、自动收起的小气泡
 - 通过受信任的 Codex 生命周期 Hooks 跟随多个聊天的“工作中 / 需要输入 / 已就绪 / 已阻塞”状态
 - 内置 64×64 水滴小精灵，以及可替换的透明 PNG 像素宠物包
@@ -42,7 +43,8 @@ dotnet run --project .\src\CodexDesktopPet\CodexDesktopPet.csproj
 得到回答后，可以在气泡底部继续输入追问；桌宠只会保留设置中指定的最近几轮。
 关闭窗口会隐藏到系统托盘；从托盘菜单选择“退出”才会结束程序。
 
-全局活动跟随只读取插件 Hook 写入的会话 ID、事件名、状态和更新时间，不读取提示词、回答、
+全局活动跟随只读取插件 Hook 写入的会话哈希、事件名、状态和更新时间，不保存原始会话 ID，
+也不读取提示词、回答、
 工具参数或聊天记录。安装或更新插件后，需要在 Codex 的 **Settings → Hooks** 中检查并信任
 当前 Hook 定义；不信任不会影响划词、OCR、直接提问和屏幕吐槽。
 
@@ -85,6 +87,8 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 如果程序找不到 `codex.exe`，请把 `CodexExecutable` 改为本机 Codex 可执行文件的完整路径。
 安装插件后，优先在插件详情页展开 `desktop-pet-settings`，直接调整显示/隐藏、活动状态跟随、
 鼠标视线跟随、自动碎碎念、置顶、快捷键和 Fast mode；保存后桌宠会自动重启应用设置。
+“常用开关”中的“检查工作状态连接”会显示最近一次 Hook 事件；若从未收到事件，会明确提示到
+**Settings → Hooks** 审核当前插件 Hook。
 也可以右键桌宠选择“设置…”，调整回答语言、超时、回答长度、推理强度和宠物包路径等高级项。
 高级设置窗口支持滚动，并会禁用与所选模式冲突的选项。划词助手默认使用 `none` 推理强度，并为其 Codex 子进程关闭
 hooks、plugins、apps 和 MCP，避免桌宠插件递归启动及无关工具初始化。桌宠使用
@@ -99,6 +103,16 @@ HTTPS-only 的独立 Codex provider，绕过部分网络环境中约 90 秒的 W
 ```text
 %LOCALAPPDATA%\CodexDesktopPet\desktop-pet.log
 ```
+
+开发回归测试：
+
+```powershell
+dotnet build .\src\CodexDesktopPet\CodexDesktopPet.csproj -c Release
+dotnet run --project .\tests\CodexDesktopPet.SmokeTests\CodexDesktopPet.SmokeTests.csproj -c Release
+```
+
+测试覆盖桌宠在单屏/负坐标多屏环境中的四边约束、多个 Codex 聊天同时活动时的状态优先级，
+以及快速输入框保持为宠物上方独立 Popup 的布局约束。
 
 ## Codex 集成方式
 

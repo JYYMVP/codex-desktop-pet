@@ -13,6 +13,20 @@ try {
         ([Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)) `
         "CodexDesktopPet\activity"
     [IO.Directory]::CreateDirectory($activityDirectory) | Out-Null
+    $healthPath = Join-Path (Split-Path -Parent $activityDirectory) "hook-health.json"
+
+    function Write-Health([string]$Event, [string]$State, [string]$SessionHash) {
+        $healthPayload = [ordered]@{
+            event = $Event
+            state = $State
+            sessionHash = $SessionHash
+            updatedAtUtc = [DateTime]::UtcNow.ToString("o")
+        } | ConvertTo-Json -Compress
+        $temporaryHealthPath = "$healthPath.$PID.tmp"
+        [IO.File]::WriteAllText(
+            $temporaryHealthPath, $healthPayload, [Text.UTF8Encoding]::new($false))
+        Move-Item -LiteralPath $temporaryHealthPath -Destination $healthPath -Force
+    }
 
     $sha = [Security.Cryptography.SHA256]::Create()
     try {
@@ -25,6 +39,7 @@ try {
 
     if ($eventName -eq "SessionEnd") {
         Remove-Item -LiteralPath $statusPath -Force -ErrorAction SilentlyContinue
+        Write-Health $eventName "Ended" $safeSessionId
         exit 0
     }
 
@@ -45,8 +60,7 @@ try {
 
     $payload = [ordered]@{
         state = $state
-        sessionId = $sessionId
-        turnId = [string]$eventData.turn_id
+        sessionHash = $safeSessionId
         event = $eventName
         updatedAtUtc = [DateTime]::UtcNow.ToString("o")
     } | ConvertTo-Json -Compress
@@ -54,6 +68,7 @@ try {
     $temporaryPath = "$statusPath.$PID.tmp"
     [IO.File]::WriteAllText($temporaryPath, $payload, [Text.UTF8Encoding]::new($false))
     Move-Item -LiteralPath $temporaryPath -Destination $statusPath -Force
+    Write-Health $eventName $state $safeSessionId
 } catch {
     # Activity mirroring is best-effort and must never block the user's turn.
     exit 0

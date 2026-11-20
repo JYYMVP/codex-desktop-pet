@@ -5,6 +5,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
+[Console]::InputEncoding = [Text.UTF8Encoding]::new($false)
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 
 $settingsDirectory = if ([string]::IsNullOrWhiteSpace($TestSettingsDirectory)) {
     Join-Path `
@@ -18,6 +20,7 @@ $settingsDirectory = if ([string]::IsNullOrWhiteSpace($TestSettingsDirectory)) {
 }
 $settingsPath = Join-Path $settingsDirectory "settings.json"
 $installedExe = Join-Path $settingsDirectory "app\CodexDesktopPet.exe"
+$hookHealthPath = Join-Path $settingsDirectory "hook-health.json"
 $uiTextPath = Join-Path $PSScriptRoot "settings-ui.zh-CN.json"
 $uiText = if (Test-Path -LiteralPath $uiTextPath -PathType Leaf) {
     $utf8 = [Text.UTF8Encoding]::new($false)
@@ -228,7 +231,12 @@ function Get-SettingsLayout {
                 [ordered]@{ kind = "property"; property = "FollowPointerWithPet" },
                 [ordered]@{ kind = "property"; property = "ScreenWatchingEnabled" },
                 [ordered]@{ kind = "property"; property = "WindowChangeCommentsEnabled" },
-                [ordered]@{ kind = "property"; property = "StayOnTop" }
+                [ordered]@{ kind = "property"; property = "StayOnTop" },
+                [ordered]@{
+                    kind = "tool"
+                    tool = "pet.activity-diagnostics"
+                    description = (Get-UiText "ActivityDiagnosticsDescription" "Check whether trusted Codex lifecycle hooks are reaching the desktop pet.")
+                }
             )
         },
         [ordered]@{
@@ -424,6 +432,13 @@ function Get-ToolDefinitions {
             }
         },
         [ordered]@{
+            name = "pet.activity-diagnostics"
+            title = (Get-UiText "ActivityDiagnosticsTitle" "Check activity connection")
+            description = (Get-UiText "ActivityDiagnosticsDescription" "Check whether trusted Codex lifecycle hooks are reaching the desktop pet.")
+            inputSchema = [ordered]@{ type = "object"; additionalProperties = $false }
+            annotations = [ordered]@{ readOnlyHint = $true }
+        },
+        [ordered]@{
             name = "pet.restart"
             title = (Get-UiText "RestartTitle" "Restart desktop pet")
             description = (Get-UiText "RestartDescription" "Restart the installed Windows helper so saved settings take effect.")
@@ -481,6 +496,22 @@ function Invoke-Tool([string]$Name, [object]$Arguments) {
                 })
             }
         }
+        "pet.activity-diagnostics" {
+            $message = if (-not (Test-Path -LiteralPath $hookHealthPath -PathType Leaf)) {
+                Get-UiText "ActivityDiagnosticsMissing" "No lifecycle hook event has reached the pet. Review and trust the plugin hook in Codex Settings > Hooks, then start a new turn."
+            } else {
+                try {
+                    $health = Get-Content -Raw -LiteralPath $hookHealthPath | ConvertFrom-Json
+                    $format = Get-UiText "ActivityDiagnosticsHealthy" "Last hook event: {0}; state: {1}; time: {2}."
+                    [string]::Format($format, $health.event, $health.state, $health.updatedAtUtc)
+                } catch {
+                    Get-UiText "ActivityDiagnosticsInvalid" "The hook health record is unreadable. Review the plugin hook and retry."
+                }
+            }
+            return [ordered]@{
+                content = @([ordered]@{ type = "text"; text = $message })
+            }
+        }
         default { throw "Unknown tool: $Name" }
     }
 }
@@ -504,7 +535,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     _meta = [ordered]@{
                         "io.modelcontextprotocol/serverInfo" = [ordered]@{
                             name = "codex-desktop-pet-settings"
-                            version = "0.9.0"
+                            version = "0.9.1"
                         }
                     }
                     capabilities = [ordered]@{
@@ -521,7 +552,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     protocolVersion = $protocolVersion
                     serverInfo = [ordered]@{
                         name = "codex-desktop-pet-settings"
-                        version = "0.9.0"
+                        version = "0.9.1"
                     }
                     capabilities = [ordered]@{
                         tools = [ordered]@{ listChanged = $false }

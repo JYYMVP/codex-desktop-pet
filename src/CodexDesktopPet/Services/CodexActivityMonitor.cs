@@ -64,21 +64,26 @@ internal sealed class CodexActivityMonitor : IDisposable
                 .Select(snapshot => snapshot.State)
                 .ToArray();
 
-            var aggregate = states.Contains(CodexActivityState.NeedsInput)
-                ? CodexActivityState.NeedsInput
-                : states.Contains(CodexActivityState.Running)
-                    ? CodexActivityState.Running
-                    : states.Contains(CodexActivityState.Blocked)
-                        ? CodexActivityState.Blocked
-                        : states.Contains(CodexActivityState.Ready)
-                            ? CodexActivityState.Ready
-                            : CodexActivityState.Idle;
-            Publish(aggregate);
+            Publish(Aggregate(states));
         }
         catch (Exception ex)
         {
             AppLog.Write($"Codex activity refresh failed: {ex.Message}");
         }
+    }
+
+    internal static CodexActivityState Aggregate(IEnumerable<CodexActivityState> states)
+    {
+        var available = states.ToHashSet();
+        return available.Contains(CodexActivityState.NeedsInput)
+            ? CodexActivityState.NeedsInput
+            : available.Contains(CodexActivityState.Running)
+                ? CodexActivityState.Running
+                : available.Contains(CodexActivityState.Blocked)
+                    ? CodexActivityState.Blocked
+                    : available.Contains(CodexActivityState.Ready)
+                        ? CodexActivityState.Ready
+                        : CodexActivityState.Idle;
     }
 
     private static ActivitySnapshot? ReadState(string path)

@@ -107,37 +107,41 @@
         </Grid>
 
         <Border x:Name="StatusChip" HorizontalAlignment="Center" VerticalAlignment="Bottom"
-                Margin="0,0,0,101" Padding="10,5" CornerRadius="11"
+                Margin="0,0,0,158" Padding="10,5" CornerRadius="11"
                 Background="#EFFFFFFF" BorderBrush="#18000000" BorderThickness="1"
                 Visibility="Collapsed" IsHitTestVisible="False">
             <TextBlock x:Name="StatusText" Text="工作中…" FontSize="10.5"
                        Foreground="#FF555555" TextAlignment="Center" />
         </Border>
 
-        <Border x:Name="ComposerPanel" Margin="22,0,22,59" Padding="7"
-                VerticalAlignment="Bottom" CornerRadius="18" Background="#FCFFFFFF"
-                BorderBrush="#24000000" BorderThickness="1" Visibility="Collapsed">
-            <Border.Effect>
-                <DropShadowEffect Color="#44000000" BlurRadius="20" ShadowDepth="5" Opacity="0.30" />
-            </Border.Effect>
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBox x:Name="DirectQuestionBox" Margin="2,0,7,0" Padding="9,7"
-                         FontSize="12" VerticalContentAlignment="Center"
-                         Foreground="#FF1F1F1F" Background="Transparent"
-                         BorderBrush="Transparent" CaretBrush="#FF1F1F1F"
-                         ToolTip="直接提问，或在划词回答后继续追问"
-                         KeyDown="DirectQuestion_KeyDown" />
-                <Button Grid.Column="1" Click="AskDirect_Click" Width="32" Height="32"
-                        Padding="0" FontSize="17" ToolTip="发送"
-                        Foreground="White" Background="#FF1F1F1F" BorderBrush="#FF1F1F1F">
-                    <TextBlock Text="↑" Foreground="White" FontSize="17" />
-                </Button>
-            </Grid>
-        </Border>
+        <!-- 独立 Popup 不占用宠物本体坐标；靠近屏幕顶部时 WPF 会自动翻到宠物下方。 -->
+        <Popup x:Name="ComposerPopup" PlacementTarget="{Binding ElementName=PetBody}"
+               Placement="Top" HorizontalOffset="-111" VerticalOffset="-10"
+               AllowsTransparency="True" StaysOpen="True" PopupAnimation="Fade">
+            <Border Width="326" Padding="7" CornerRadius="18" Background="#FCFFFFFF"
+                    BorderBrush="#24000000" BorderThickness="1">
+                <Border.Effect>
+                    <DropShadowEffect Color="#44000000" BlurRadius="20" ShadowDepth="5" Opacity="0.30" />
+                </Border.Effect>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="DirectQuestionBox" Margin="2,0,7,0" Padding="9,7"
+                             FontSize="12" VerticalContentAlignment="Center"
+                             Foreground="#FF1F1F1F" Background="Transparent"
+                             BorderBrush="Transparent" CaretBrush="#FF1F1F1F"
+                             ToolTip="直接提问，或在划词回答后继续追问"
+                             KeyDown="DirectQuestion_KeyDown" />
+                    <Button Grid.Column="1" Click="AskDirect_Click" Width="32" Height="32"
+                            Padding="0" FontSize="17" ToolTip="发送"
+                            Foreground="White" Background="#FF1F1F1F" BorderBrush="#FF1F1F1F">
+                        <TextBlock Text="↑" Foreground="White" FontSize="17" />
+                    </Button>
+                </Grid>
+            </Border>
+        </Popup>
 
         <Border x:Name="ActionDock" Width="102" Height="36" Margin="0,0,0,14"
                 HorizontalAlignment="Center" VerticalAlignment="Bottom"

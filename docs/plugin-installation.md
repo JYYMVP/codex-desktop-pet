@@ -2,7 +2,8 @@
 
 本教程用于亲自验证 `plugin` 分支。插件负责在 Codex 中提供发现、安装引导和
 启动与活动状态 hooks；透明窗口、全局快捷键和选区读取仍由独立的 Windows
-桌宠进程完成。活动 hooks 只写入会话 ID、事件名、状态和时间，不写入聊天内容。
+桌宠进程完成。活动 hooks 只写入会话哈希、事件名、状态和时间，不保存原始会话 ID，
+也不写入聊天内容。
 
 ## 1. 准备环境
 
@@ -141,16 +142,19 @@ Get-Process CodexDesktopPet | Select-Object Id, Path
 4. 按 `Ctrl + Alt + R`，在冻结桌面上拖动框选一块含文字的区域；
 5. 确认 OCR 回答完成后 `%LOCALAPPDATA%\CodexDesktopPet\captures` 中没有残留本次源图或区域图；
 6. 单击桌宠或胶囊左侧按钮展开/收起快速提问；
-7. 在快速提问输入框继续追问；
-8. 从胶囊右侧下拉菜单查看 Codex 套餐额度；
-9. 打开“宠物库…”并进入“新建像素宠物”，验证画笔、橡皮、填充、颜色、预览和创建流程；
+7. 确认输入框出现在宠物上方而不遮住宠物；把桌宠拖到屏幕顶边后再次展开，输入框应自动翻到下方；
+8. 把桌宠拖到屏幕四周，确认宠物与操作胶囊始终可以找回；
+9. 在快速提问输入框继续追问；
+10. 从胶囊右侧下拉菜单查看 Codex 套餐额度；
+11. 打开“宠物库…”并进入“新建像素宠物”，验证画笔、橡皮、填充、颜色、预览和创建流程；
    如有你有权使用的 ChatGPT Pets v1/v2 精灵表，也可验证“导入 ChatGPT 精灵表”。
 
 展开插件详情页中的 `desktop-pet-settings` 后，应能看到原生设置，包括隐藏桌宠开关、
 显示/隐藏快捷键（默认 `Ctrl+Alt+H`）、划词快捷键、OCR 框选快捷键、活动状态跟随、
 鼠标视线跟随、两种自动屏幕评论、评论冷却、碎碎念停留时间、置顶和 Fast mode。常用
 开关位于最上方的 **Quick controls** 分组，保存成功后桌宠会自动重启并应用设置；详情页中的
-重启操作只用于手工修改配置后的恢复。官方 Pets 兼容模式应标记为实验项。
+“检查工作状态连接”会报告最近一次 Hook 事件或给出审核提示；重启操作只用于手工修改配置后的恢复。
+官方 Pets 兼容模式应标记为实验项。
 
 如果要回归验证已暂停开发的官方 Pets 兼容模式：
 
@@ -180,14 +184,13 @@ Codex，或启动一个新的 CLI 会话。首次遇到插件 hook 审核时，�
   `PermissionRequest`、`Stop`、`Interrupt` 和 `SessionEnd` 均已审核；
 - 不要反复安装插件来解决未信任的 hook。
 
-hook 若被执行，会尝试在插件数据目录写入 `desktop-pet-hook.log`。可以这样查找：
+Hook 若被执行，会更新下面的健康记录（只含事件、状态、会话哈希和时间，不含聊天内容）：
 
 ```powershell
-Get-ChildItem "$env:USERPROFILE\.codex\plugins" `
-  -Recurse `
-  -Filter desktop-pet-hook.log `
-  -ErrorAction SilentlyContinue
+Get-Content "$env:LOCALAPPDATA\CodexDesktopPet\hook-health.json"
 ```
+
+也可以在插件详情页的 `desktop-pet-settings` 中点击“检查工作状态连接”。
 
 桌宠本体日志始终位于：
 
@@ -198,7 +201,16 @@ Get-ChildItem "$env:USERPROFILE\.codex\plugins" `
 活动状态元数据位于 `%LOCALAPPDATA%\CodexDesktopPet\activity`。当任意聊天开始工作、等待
 确认或结束时，桌宠日志应出现 `Aggregated Codex activity changed`。
 
-## 9. 更新插件分支
+## 9. 运行自动化回归测试
+
+```powershell
+dotnet build .\src\CodexDesktopPet\CodexDesktopPet.csproj -c Release
+dotnet run --project .\tests\CodexDesktopPet.SmokeTests\CodexDesktopPet.SmokeTests.csproj -c Release
+```
+
+应显示 12 项测试通过。它们覆盖四边/多屏拖动约束、多聊天活动状态聚合和快速输入框布局。
+
+## 10. 更新插件分支
 
 ```powershell
 git pull --ff-only origin plugin
@@ -208,7 +220,7 @@ codex plugin add codex-desktop-pet@jyymvp-desktop-tools --json
 
 如果桌宠程序也有更新，请重新执行第 3 步和第 6 步。
 
-## 10. 完整卸载
+## 11. 完整卸载
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
