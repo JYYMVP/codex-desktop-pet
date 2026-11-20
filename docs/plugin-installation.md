@@ -158,7 +158,7 @@ Get-Process CodexDesktopPet | Select-Object Id, Path
 12. 在托盘展开多个 Codex 聊天的匿名活动状态，并验证“语音输入（Win+H）”只打开 Windows 听写、不会自动发送；
 13. 如有你有权使用的 ChatGPT Pets v1/v2 精灵表，可验证“导入 ChatGPT 精灵表”；只有在愿意公开素材时才确认创建 GitHub Gist 分享链接，并在测试后用“撤销公网链接”删除。
 
-展开插件详情页中的 `desktop-pet-settings` 后，应能看到原生设置，包括隐藏桌宠开关、
+展开插件详情页中的 `desktop-pet-settings` 后，应能看到“显示宠物”按钮和原生设置。桌宠未运行或隐藏后无法找回时，点击该按钮会解除隐藏并立即启动；其余设置包括隐藏桌宠开关、
 显示/隐藏快捷键（默认 `Ctrl+Alt+H`）、划词快捷键、OCR 框选快捷键、活动状态跟随、
 鼠标视线跟随、两种自动屏幕评论、评论冷却、碎碎念停留时间、置顶和 Fast mode。常用
 开关位于最上方的 **Quick controls** 分组，保存成功后桌宠会自动重启并应用设置；详情页中的
@@ -221,7 +221,7 @@ dotnet build .\src\CodexDesktopPet\CodexDesktopPet.csproj -c Release
 dotnet run --project .\tests\CodexDesktopPet.SmokeTests\CodexDesktopPet.SmokeTests.csproj -c Release
 ```
 
-应显示 21 项测试通过。它们覆盖四边/多屏拖动约束、无控制台启动、与 Codex 同启同退、细分工作阶段、点击/悬停/拖动互动、多聊天活动状态聚合、快速输入框布局、
+应显示 22 项测试通过。它们覆盖四边/多屏拖动约束、无控制台启动、与 Codex 同启同退、插件页显示宠物动作、细分工作阶段、点击/悬停/拖动互动、多聊天活动状态聚合、快速输入框布局、
 动画宠物包往返，以及公网分享链接与压缩包的安全校验。
 
 ## 10. 更新插件分支

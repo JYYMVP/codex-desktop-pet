@@ -42,6 +42,7 @@ CheckCodexLifetimeDecision();
 CheckActivityDescriptions();
 CheckPetInteractionMenu();
 CheckHookLifecycleContract();
+CheckShowPetActionContract();
 CheckComposerLayout();
 CheckAnimatedPetPackage();
 CheckGistShareLinkValidation();
@@ -58,7 +59,7 @@ if (failures.Count > 0)
     return 1;
 }
 
-Console.WriteLine("21 placement, lifecycle, activity, interaction, editor, package, and share-security smoke tests passed.");
+Console.WriteLine("22 placement, lifecycle, activity, interaction, plugin-control, editor, package, and share-security smoke tests passed.");
 return 0;
 
 void Check(string name, double expectedLeft, double expectedTop, Point actual)
@@ -153,6 +154,16 @@ void CheckHookLifecycleContract()
             .Any(hook => (hook.GetProperty("command").GetString() ?? string.Empty)
                 .Contains("start-pet.ps1", StringComparison.Ordinal)))
         failures.Add("plugin hooks must restart the pet on the next prompt without a console window");
+}
+
+void CheckShowPetActionContract()
+{
+    var server = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "settings-server.ps1"));
+    if (!server.Contains("tool = \"pet.show\"", StringComparison.Ordinal) ||
+        !server.Contains("name = \"pet.show\"", StringComparison.Ordinal) ||
+        !server.Contains("function Show-InstalledPet", StringComparison.Ordinal) ||
+        !server.Contains("PetHidden = $false", StringComparison.Ordinal))
+        failures.Add("plugin details must expose a Show Pet action that clears hidden state and starts the helper");
 }
 
 void CheckActivitySnapshotOrdering()

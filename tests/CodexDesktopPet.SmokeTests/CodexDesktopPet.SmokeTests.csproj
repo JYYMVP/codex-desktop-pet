@@ -16,6 +16,9 @@
     <None Include="..\..\plugins\codex-desktop-pet\hooks\hooks.json"
           Link="hooks.json"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\plugins\codex-desktop-pet\server\settings-server.ps1"
+          Link="settings-server.ps1"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

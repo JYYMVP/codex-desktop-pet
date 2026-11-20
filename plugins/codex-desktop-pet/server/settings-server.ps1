@@ -261,6 +261,11 @@ function Get-SettingsLayout {
                 [ordered]@{ kind = "property"; property = "StayOnTop" },
                 [ordered]@{
                     kind = "tool"
+                    tool = "pet.show"
+                    description = (Get-UiText "ShowPetDescription" "Start the installed helper and make the desktop pet visible.")
+                },
+                [ordered]@{
+                    kind = "tool"
                     tool = "pet.install-latest"
                     description = (Get-UiText "InstallLatestDescription" "Download, verify, install, and start the latest GitHub release.")
                 },
@@ -474,6 +479,13 @@ function Get-ToolDefinitions {
             }
         },
         [ordered]@{
+            name = "pet.show"
+            title = (Get-UiText "ShowPetTitle" "Show pet")
+            description = (Get-UiText "ShowPetDescription" "Start the installed helper and make the desktop pet visible.")
+            inputSchema = [ordered]@{ type = "object"; additionalProperties = $false }
+            annotations = [ordered]@{ destructiveHint = $false }
+        },
+        [ordered]@{
             name = "pet.install-latest"
             title = (Get-UiText "InstallLatestTitle" "Install or update desktop pet")
             description = (Get-UiText "InstallLatestDescription" "Download, verify, install, and start the latest GitHub release.")
@@ -519,6 +531,12 @@ function Restart-InstalledPet([bool]$RequireInstalled = $true) {
     Start-Process -FilePath $installedExe -WindowStyle Hidden
 }
 
+function Show-InstalledPet {
+    $state = Read-SettingsState
+    Write-SettingsState $state.Raw ([ordered]@{ PetHidden = $false })
+    Restart-InstalledPet
+}
+
 function Invoke-Tool([string]$Name, [object]$Arguments) {
     switch ($Name) {
         "settings.read" {
@@ -534,6 +552,15 @@ function Invoke-Tool([string]$Name, [object]$Arguments) {
             return [ordered]@{
                 content = @()
                 structuredContent = [ordered]@{ values = $saved }
+            }
+        }
+        "pet.show" {
+            Show-InstalledPet
+            return [ordered]@{
+                content = @([ordered]@{
+                    type = "text"
+                    text = (Get-UiText "ShowPetMessage" "Desktop pet is visible.")
+                })
             }
         }
         "pet.restart" {
@@ -600,7 +627,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     _meta = [ordered]@{
                         "io.modelcontextprotocol/serverInfo" = [ordered]@{
                             name = "codex-desktop-pet-settings"
-                            version = "0.10.1"
+                            version = "0.10.2"
                         }
                     }
                     capabilities = [ordered]@{
@@ -617,7 +644,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     protocolVersion = $protocolVersion
                     serverInfo = [ordered]@{
                         name = "codex-desktop-pet-settings"
-                        version = "0.10.1"
+                        version = "0.10.2"
                     }
                     capabilities = [ordered]@{
                         tools = [ordered]@{ listChanged = $false }

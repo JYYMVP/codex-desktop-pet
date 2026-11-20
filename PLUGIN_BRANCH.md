@@ -17,6 +17,7 @@ The plugin currently contains:
 - a multi-chat activity tray, Windows voice-typing entry, animated pixel-pet editor, and revocable public sharing through user-owned GitHub Gists.
 - Codex-bound lifecycle management, hidden non-interactive hooks, detailed task-phase labels, and configurable idle/reduced-motion behavior.
 - a checksum-verified latest-release installer on the plugin page plus a Windows installer/release workflow with mandatory signing for tagged releases.
+- an official-style **Show pet** action that clears hidden state and starts the installed helper even when no global-hotkey process is running.
 
 The plugin does not bundle a runtime-specific Windows payload. Its setup flow can accept a local published directory or download the latest GitHub Release, verify its SHA-256 sidecar, install it under `%LOCALAPPDATA%\CodexDesktopPet\app`, and keep settings and logs outside that removable application directory. Tagged releases are deliberately blocked unless the repository is configured with a Windows signing certificate; this prevents an unsigned build from being presented as a trusted public installer.
 
