@@ -61,8 +61,7 @@ public partial class MainWindow : Window
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
         AppLog.Write($"Window loaded. Version={Environment.Version}; Settings={AppSettings.SettingsPath}");
-        Left = SystemParameters.WorkArea.Right - ActualWidth - 18;
-        Top = SystemParameters.WorkArea.Bottom - ActualHeight - 18;
+        RestoreWindowPosition();
         Topmost = _settings.StayOnTop;
         UpdateContextHint();
         UpdateHotKeyPresentation();
@@ -90,7 +89,7 @@ public partial class MainWindow : Window
         if (_busy)
             return;
 
-        _busy = true;
+        SetBusy(true);
         if (!IsVisible)
             ShowStandalonePet(persistVisibility: true);
         AnswerPanel.Visibility = Visibility.Collapsed;
@@ -112,13 +111,13 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             AppLog.Write($"Request failed: {ex}");
-            ShowMessage(FriendlyError(ex), PetState.Error);
+            ShowRequestFailure(ex);
         }
         finally
         {
             _requestCancellation?.Dispose();
             _requestCancellation = null;
-            _busy = false;
+            SetBusy(false);
         }
     }
 
@@ -168,7 +167,7 @@ public partial class MainWindow : Window
             PetState.Ready => ("回答好啦", System.Windows.Media.Color.FromRgb(104, 233, 255)),
             PetState.NeedsInput => ("先选中一些文字吧", System.Windows.Media.Color.FromRgb(255, 210, 112)),
             PetState.Error => ("遇到了一点问题", System.Windows.Media.Color.FromRgb(255, 122, 146)),
-            _ => ($"选中文字后按 {CurrentHotKey.DisplayName}", System.Windows.Media.Color.FromRgb(104, 233, 255))
+            _ => ($"划词：{CurrentHotKey.DisplayName}", System.Windows.Media.Color.FromRgb(104, 233, 255))
         };
 
         StatusText.Text = status;
@@ -299,7 +298,7 @@ public partial class MainWindow : Window
         if (_busy)
             return;
 
-        _busy = true;
+        SetBusy(true);
         string? snapshotPath = null;
         string? regionPath = null;
         var wasVisible = IsVisible;
@@ -341,7 +340,7 @@ public partial class MainWindow : Window
             AppLog.Write($"OCR region request failed: {ex}");
             if (!IsVisible)
                 ShowStandalonePet(persistVisibility: true);
-            ShowMessage(FriendlyError(ex), PetState.Error);
+            ShowRequestFailure(ex);
         }
         finally
         {
@@ -349,7 +348,7 @@ public partial class MainWindow : Window
             ScreenCaptureService.DeleteCapture(regionPath);
             _requestCancellation?.Dispose();
             _requestCancellation = null;
-            _busy = false;
+            SetBusy(false);
             if (wasVisible && !IsVisible)
                 Show();
         }
@@ -358,7 +357,10 @@ public partial class MainWindow : Window
     private void CopyAnswer_Click(object sender, RoutedEventArgs e)
     {
         if (!string.IsNullOrWhiteSpace(_answerMarkdown))
+        {
             System.Windows.Clipboard.SetText(_answerMarkdown);
+            StatusText.Text = "已复制最近回答";
+        }
     }
 
     private void HideAnswer_Click(object sender, RoutedEventArgs e) =>
@@ -372,7 +374,7 @@ public partial class MainWindow : Window
         if (_busy)
             return;
 
-        _busy = true;
+        SetBusy(true);
         AnswerPanel.Visibility = Visibility.Visible;
         SetAnswerMarkdown("正在查询 Codex 套餐额度…");
         SetPetState(PetState.Thinking);
@@ -388,13 +390,13 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             AppLog.Write($"Codex plan usage query failed: {ex}");
-            ShowMessage(FriendlyError(ex), PetState.Error);
+            ShowRequestFailure(ex);
         }
         finally
         {
             _requestCancellation?.Dispose();
             _requestCancellation = null;
-            _busy = false;
+            SetBusy(false);
         }
     }
 
@@ -410,6 +412,47 @@ public partial class MainWindow : Window
         MoreButton.ContextMenu.PlacementTarget = MoreButton;
         MoreButton.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
         MoreButton.ContextMenu.IsOpen = true;
+    }
+
+    private void DirectQuestion_TextChanged(object sender,
+        System.Windows.Controls.TextChangedEventArgs e) =>
+        ComposerPlaceholder.Visibility = string.IsNullOrEmpty(DirectQuestionBox.Text)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+    private void CancelRequest_Click(object sender, RoutedEventArgs e)
+    {
+        if (_requestCancellation is null)
+            return;
+        CancelButton.IsEnabled = false;
+        StatusText.Text = "正在停止…";
+        _requestCancellation.Cancel();
+    }
+
+    private void SetBusy(bool busy)
+    {
+        _busy = busy;
+        DirectQuestionBox.IsEnabled = !busy;
+        SendButton.Visibility = busy ? Visibility.Collapsed : Visibility.Visible;
+        CancelButton.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
+        CancelButton.IsEnabled = busy;
+    }
+
+    private void ShowRequestFailure(Exception exception, bool automatic = false)
+    {
+        if (_requestCancellation?.IsCancellationRequested == true)
+        {
+            if (automatic)
+                SetPetState(PetState.Idle);
+            else
+                ShowMessage("已停止当前操作。", PetState.Idle);
+            return;
+        }
+
+        if (automatic)
+            SetPetState(PetState.Idle);
+        else
+            ShowMessage(FriendlyError(exception), PetState.Error);
     }
 
     private void HidePet_Click(object sender, RoutedEventArgs e) =>
@@ -440,7 +483,7 @@ public partial class MainWindow : Window
         if (_busy || string.IsNullOrWhiteSpace(question))
             return;
 
-        _busy = true;
+        SetBusy(true);
         AnswerPanel.Visibility = Visibility.Visible;
         DirectQuestionBox.Clear();
         try
@@ -450,13 +493,13 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             AppLog.Write($"Direct question failed: {ex}");
-            ShowMessage(FriendlyError(ex), PetState.Error);
+            ShowRequestFailure(ex);
         }
         finally
         {
             _requestCancellation?.Dispose();
             _requestCancellation = null;
-            _busy = false;
+            SetBusy(false);
         }
     }
 
@@ -609,7 +652,7 @@ public partial class MainWindow : Window
             trigger == ScreenCommentTrigger.WindowChange && !_settings.WindowChangeCommentsEnabled)
             return;
 
-        _busy = true;
+        SetBusy(true);
         string? capturePath = null;
         var wasVisible = IsVisible;
         try
@@ -639,10 +682,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             AppLog.Write($"Screen comment failed: {ex}");
-            if (!automatic)
-                ShowMessage(FriendlyError(ex), PetState.Error);
-            else
-                SetPetState(PetState.Idle);
+            ShowRequestFailure(ex, automatic);
         }
         finally
         {
@@ -651,7 +691,7 @@ public partial class MainWindow : Window
             ScreenCaptureService.DeleteCapture(capturePath);
             _requestCancellation?.Dispose();
             _requestCancellation = null;
-            _busy = false;
+            SetBusy(false);
         }
     }
 
@@ -780,14 +820,13 @@ public partial class MainWindow : Window
         var displayName = CurrentHotKey.DisplayName;
         var ocrDisplayName = CurrentOcrHotKey.DisplayName;
         var toggleDisplayName = CurrentTogglePetHotKey.DisplayName;
-        StatusText.Text = $"选中文字后按 {displayName}";
-        PetBody.ToolTip = $"单击：展开/收起回答\n拖动：移动桌宠\n显示/隐藏：{toggleDisplayName}";
+        StatusText.Text = $"划词：{displayName}";
+        PetBody.ToolTip = $"单击查看最近回答\n拖动可移动桌宠\n显示/隐藏：{toggleDisplayName}";
         PetOcrMenuItem.Header = $"OCR 框选识别（{ocrDisplayName}）";
-        MoreOcrMenuItem.Header = $"OCR 框选识别（{ocrDisplayName}）";
         PetHideMenuItem.Header = $"隐藏桌宠（{toggleDisplayName}）";
         MoreHideMenuItem.Header = $"隐藏桌宠（{toggleDisplayName}）";
         if (_answerMarkdown.StartsWith("我已经就位。", StringComparison.Ordinal))
-            SetAnswerMarkdown($"我已经就位。选中文字后按 {displayName}，我会给出简要回答。");
+            SetAnswerMarkdown($"选中文字后按 {displayName}，或在下方直接提问。");
         if (_trayIcon is not null)
             _trayIcon.Text = $"Codex 桌宠 — {displayName}";
         if (_trayVisibilityItem is not null)
@@ -817,7 +856,11 @@ public partial class MainWindow : Window
         _petDragged = true;
         _petPressPosition = null;
         PetBody.ReleaseMouseCapture();
-        try { DragMove(); }
+        try
+        {
+            DragMove();
+            SaveWindowPosition();
+        }
         catch (InvalidOperationException) { }
         e.Handled = true;
     }
@@ -848,6 +891,28 @@ public partial class MainWindow : Window
             e.Cancel = true;
             HideStandalonePet(persistVisibility: true);
         }
+    }
+
+    private void RestoreWindowPosition()
+    {
+        var virtualScreen = Forms.SystemInformation.VirtualScreen;
+        var defaultLeft = SystemParameters.WorkArea.Right - ActualWidth - 18;
+        var defaultTop = SystemParameters.WorkArea.Bottom - ActualHeight - 18;
+        var requestedLeft = _settings.PetWindowLeft ?? defaultLeft;
+        var requestedTop = _settings.PetWindowTop ?? defaultTop;
+        Left = Math.Clamp(requestedLeft, virtualScreen.Left,
+            Math.Max(virtualScreen.Left, virtualScreen.Right - ActualWidth));
+        Top = Math.Clamp(requestedTop, virtualScreen.Top,
+            Math.Max(virtualScreen.Top, virtualScreen.Bottom - ActualHeight));
+    }
+
+    private void SaveWindowPosition()
+    {
+        if (!double.IsFinite(Left) || !double.IsFinite(Top))
+            return;
+        _settings.PetWindowLeft = Left;
+        _settings.PetWindowTop = Top;
+        _settings.Save();
     }
 
     private void Window_Closed(object? sender, EventArgs e)

@@ -21,7 +21,16 @@ public partial class App : System.Windows.Application
         }
 
         DispatcherUnhandledException += OnDispatcherUnhandledException;
-        new MainWindow().Show();
+        var window = new MainWindow();
+        if (string.Equals(Environment.GetEnvironmentVariable("CODEX_DESKTOP_PET_PREVIEW"), "1",
+                StringComparison.Ordinal))
+        {
+            // Local visual QA mode: expose the otherwise taskbar-less transparent window
+            // to Windows accessibility/capture tools without changing normal behavior.
+            window.ShowInTaskbar = true;
+            window.ShowActivated = true;
+        }
+        window.Show();
     }
 
     protected override void OnExit(ExitEventArgs e)

@@ -25,6 +25,8 @@ internal sealed class AppSettings
     public bool WindowChangeCommentsEnabled { get; set; }
     public int WindowChangeCommentCooldownMinutes { get; set; } = 2;
     public bool StayOnTop { get; set; } = true;
+    public double? PetWindowLeft { get; set; }
+    public double? PetWindowTop { get; set; }
 
     public static string SettingsPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
