@@ -249,6 +249,16 @@ public partial class PetLibraryWindow : Window
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
+    private void LibraryMoreButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (LibraryMoreButton.ContextMenu is null)
+            return;
+        LibraryMoreButton.ContextMenu.PlacementTarget = LibraryMoreButton;
+        LibraryMoreButton.ContextMenu.Placement =
+            System.Windows.Controls.Primitives.PlacementMode.Top;
+        LibraryMoreButton.ContextMenu.IsOpen = true;
+    }
+
     private void TryAction(Action action)
     {
         try { action(); }

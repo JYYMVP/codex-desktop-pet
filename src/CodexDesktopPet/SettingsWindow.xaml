@@ -1,139 +1,309 @@
 <Window x:Class="CodexDesktopPet.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Codex 桌宠高级设置" Width="720" Height="800" MinHeight="620"
+        Title="Codex 桌宠设置" Width="780" Height="720" MinWidth="720" MinHeight="640"
         WindowStartupLocation="CenterScreen" ResizeMode="CanResize"
         Background="{StaticResource WindowBrush}" Foreground="{StaticResource TextBrush}">
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-    <Grid Margin="28">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="180" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
+    <Window.Resources>
+        <Style x:Key="SettingsTabStyle" TargetType="TabItem">
+            <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="14,9" />
+            <Setter Property="Margin" Value="0,0,5,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="Chrome" CornerRadius="9"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background"
+                                        Value="{StaticResource HoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Chrome" Property="Background"
+                                        Value="{StaticResource RaisedPanelBrush}" />
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SettingLabelStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="28,24">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.ColumnSpan="2" Text="高级设置" FontSize="24" FontWeight="SemiBold"
-                   Foreground="{StaticResource TextBrush}" Margin="0,0,0,8" />
-        <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Margin="0,0,0,18"
-                   Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap"
-                   Text="常用开关请在 Codex 的插件详情页展开“pet-controls”设置；这里保留快捷键、回答参数和本地宠物包等高级选项。" />
+        <StackPanel>
+            <TextBlock Text="设置" FontSize="25" FontWeight="SemiBold" />
+            <TextBlock Text="常用操作放在前面；高级能力保持可用，但不再挤在同一页。"
+                       Margin="0,5,0,0" Foreground="{StaticResource MutedTextBrush}" />
+        </StackPanel>
 
-        <TextBlock Grid.Row="2" Text="Codex 可执行文件" VerticalAlignment="Center" />
-        <TextBox x:Name="CodexExecutableBox" Grid.Row="2" Grid.Column="1" Margin="0,5" Padding="7" />
+        <TabControl Grid.Row="1" Margin="0,20,0,16" Background="Transparent"
+                    BorderThickness="0" ItemContainerStyle="{StaticResource SettingsTabStyle}">
+            <TabItem Header="常用">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,16,8,0">
+                    <StackPanel>
+                        <Border Style="{StaticResource SectionCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="快捷键" FontSize="16" FontWeight="SemiBold" />
+                                <TextBlock Text="单击输入框后直接按下新组合键；三个快捷键不能重复。"
+                                           Margin="0,4,0,16" Foreground="{StaticResource MutedTextBrush}" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="14" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="14" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="划词提问" Style="{StaticResource SettingLabelStyle}" />
+                                        <TextBox x:Name="HotKeyBox" IsReadOnly="True"
+                                                 PreviewKeyDown="HotKeyBox_PreviewKeyDown" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="OCR 框选" Style="{StaticResource SettingLabelStyle}" />
+                                        <TextBox x:Name="OcrHotKeyBox" IsReadOnly="True"
+                                                 PreviewKeyDown="OcrHotKeyBox_PreviewKeyDown" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="4">
+                                        <TextBlock Text="显示 / 隐藏" Style="{StaticResource SettingLabelStyle}" />
+                                        <TextBox x:Name="TogglePetHotKeyBox" IsReadOnly="True"
+                                                 PreviewKeyDown="TogglePetHotKeyBox_PreviewKeyDown" />
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
 
-        <TextBlock Grid.Row="3" Text="回答语言" VerticalAlignment="Center" />
-        <TextBox x:Name="LanguageBox" Grid.Row="3" Grid.Column="1" Margin="0,5" Padding="7" />
+                        <Border Style="{StaticResource SectionCardStyle}" Margin="0,14,0,0">
+                            <StackPanel>
+                                <TextBlock Text="显示与启动" FontSize="16" FontWeight="SemiBold"
+                                           Margin="0,0,0,13" />
+                                <CheckBox x:Name="StayOnTopBox" Content="桌宠始终置顶"
+                                          Margin="0,0,0,12" />
+                                <CheckBox x:Name="PetHiddenBox"
+                                          Content="启动后隐藏桌宠（可用显示 / 隐藏快捷键唤回）"
+                                          Margin="0,0,0,12" />
+                                <CheckBox x:Name="BindLifetimeToCodexBox"
+                                          Content="与 Codex 同启同退（退出后下次提问自动恢复）" />
+                            </StackPanel>
+                        </Border>
 
-        <TextBlock Grid.Row="4" Text="全局快捷键" VerticalAlignment="Center" />
-        <Grid Grid.Row="4" Grid.Column="1" Margin="0,5">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="12" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="12" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <StackPanel>
-                <TextBlock Text="划词提问" Margin="0,0,0,4" Foreground="{StaticResource MutedTextBrush}" FontSize="11" />
-                <TextBox x:Name="HotKeyBox" Padding="7" IsReadOnly="True"
-                         PreviewKeyDown="HotKeyBox_PreviewKeyDown" ToolTip="先单击此处，再直接按下新的组合键" />
-            </StackPanel>
-            <StackPanel Grid.Column="2">
-                <TextBlock Text="OCR 框选" Margin="0,0,0,4" Foreground="{StaticResource MutedTextBrush}" FontSize="11" />
-                <TextBox x:Name="OcrHotKeyBox" Padding="7" IsReadOnly="True"
-                         PreviewKeyDown="OcrHotKeyBox_PreviewKeyDown" ToolTip="触发后拖动框选图片或扫描文档区域" />
-            </StackPanel>
-            <StackPanel Grid.Column="4">
-                <TextBlock Text="显示 / 隐藏" Margin="0,0,0,4" Foreground="{StaticResource MutedTextBrush}" FontSize="11" />
-                <TextBox x:Name="TogglePetHotKeyBox" Padding="7" IsReadOnly="True"
-                         PreviewKeyDown="TogglePetHotKeyBox_PreviewKeyDown" ToolTip="无论桌宠是否可见，都可用此快捷键切换" />
+                        <Border Style="{StaticResource SectionCardStyle}" Margin="0,14,0,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="170" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="回答语言" VerticalAlignment="Center" />
+                                <TextBox x:Name="LanguageBox" Grid.Column="1" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Codex 联动">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,16,8,0">
+                    <StackPanel>
+                        <Border Style="{StaticResource SectionCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="工作状态" FontSize="16" FontWeight="SemiBold"
+                                           Margin="0,0,0,13" />
+                                <CheckBox x:Name="FollowCodexActivityBox"
+                                          Content="跟随 Codex 全局工作状态"
+                                          ToolTip="只读取生命周期 Hook 写入的状态元数据"
+                                          Margin="0,0,0,12" />
+                                <CheckBox x:Name="FollowPointerWithPetBox"
+                                          Content="宠物视线跟随鼠标（需要含 16 向视线帧的 v2 宠物）"
+                                          Margin="0,0,0,14" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="190" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="空闲互动频率" VerticalAlignment="Center" />
+                                    <ComboBox x:Name="IdleActivityLevelBox" Grid.Column="1"
+                                              SelectedValuePath="Tag">
+                                        <ComboBoxItem Tag="0">安静</ComboBoxItem>
+                                        <ComboBoxItem Tag="1">标准</ComboBoxItem>
+                                        <ComboBoxItem Tag="2">活泼</ComboBoxItem>
+                                    </ComboBox>
+                                </Grid>
+                                <CheckBox x:Name="ReduceMotionBox" Margin="0,14,0,0"
+                                          Content="减少动态效果（关闭漂浮、脉冲和随机动作）" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SectionCardStyle}" Margin="0,14,0,0">
+                            <StackPanel>
+                                <TextBlock Text="实验模式" FontSize="16" FontWeight="SemiBold" />
+                                <TextBlock Text="仅在当前 ChatGPT Desktop 已启用官方 Pets 时使用。"
+                                           Margin="0,4,0,13"
+                                           Foreground="{StaticResource MutedTextBrush}" />
+                                <CheckBox x:Name="OfficialPetsModeBox"
+                                          Content="使用官方 Pets 兼容模式（当前暂停开发）"
+                                          Checked="RefreshDependentControls"
+                                          Unchecked="RefreshDependentControls"
+                                          ToolTip="隐藏独立桌宠，并使用 Windows+Alt+P 唤起官方 Pets" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="回答与性能">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,16,8,0">
+                    <StackPanel>
+                        <Border Style="{StaticResource SectionCardStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="190" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="推理强度" VerticalAlignment="Center" />
+                                <ComboBox x:Name="ReasoningEffortBox" Grid.Column="1"
+                                          SelectedValuePath="Tag">
+                                    <ComboBoxItem Tag="none">不推理（最快，推荐日常使用）</ComboBoxItem>
+                                    <ComboBoxItem Tag="low">低</ComboBoxItem>
+                                    <ComboBoxItem Tag="medium">中</ComboBoxItem>
+                                    <ComboBoxItem Tag="high">高（较慢）</ComboBoxItem>
+                                </ComboBox>
+                                <CheckBox x:Name="FastModeBox" Grid.Row="1" Grid.Column="1"
+                                          Margin="0,14,0,4"
+                                          Content="Fast 模式（更快，但消耗更多套餐额度）" />
+                                <TextBlock Grid.Row="2" Text="回答最大字符数"
+                                           Margin="0,16,0,0" VerticalAlignment="Center" />
+                                <TextBox x:Name="MaximumAnswerBox" Grid.Row="2" Grid.Column="1"
+                                         Margin="0,16,0,0" />
+                                <TextBlock Grid.Row="3" Text="回答超时（秒）"
+                                           Margin="0,12,0,0" VerticalAlignment="Center" />
+                                <TextBox x:Name="TimeoutBox" Grid.Row="3" Grid.Column="1"
+                                         Margin="0,12,0,0" />
+                            </Grid>
+                        </Border>
+                        <TextBlock Text="建议日常使用“不推理”；复杂任务再临时调高。"
+                                   Margin="2,10,0,0" Foreground="{StaticResource SubtleTextBrush}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="自动观察">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,16,8,0">
+                    <StackPanel>
+                        <Border Padding="16" CornerRadius="12" Background="#1A10A37F"
+                                BorderBrush="#5510A37F" BorderThickness="1">
+                            <TextBlock Text="隐私提示：开启后会截取当前显示器画面；临时图片会在完成、失败或取消后删除。"
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource MutedTextBrush}" />
+                        </Border>
+                        <Border Style="{StaticResource SectionCardStyle}" Margin="0,14,0,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="220" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <CheckBox x:Name="ScreenWatchingBox" Grid.ColumnSpan="2"
+                                          Checked="RefreshDependentControls"
+                                          Unchecked="RefreshDependentControls"
+                                          Content="定时看屏幕并评论" />
+                                <TextBlock Grid.Row="1" Text="间隔（分钟）"
+                                           Margin="26,14,0,0" VerticalAlignment="Center" />
+                                <TextBox x:Name="ScreenIntervalBox" Grid.Row="1" Grid.Column="1"
+                                         Margin="0,14,0,0" />
+                                <CheckBox x:Name="WindowChangeCommentsBox" Grid.Row="2"
+                                          Grid.ColumnSpan="2" Margin="0,20,0,0"
+                                          Checked="RefreshDependentControls"
+                                          Unchecked="RefreshDependentControls"
+                                          Content="切换到新窗口或页面时评论" />
+                                <TextBlock Grid.Row="3" Text="冷却（分钟）"
+                                           Margin="26,14,0,0" VerticalAlignment="Center" />
+                                <TextBox x:Name="WindowChangeCooldownBox" Grid.Row="3" Grid.Column="1"
+                                         Margin="0,14,0,0" />
+                                <TextBlock Grid.Row="4" Text="碎碎念停留（秒）"
+                                           Margin="0,14,0,0" VerticalAlignment="Center" />
+                                <TextBox x:Name="CommentBubbleSecondsBox" Grid.Row="4" Grid.Column="1"
+                                         Margin="0,14,0,0"
+                                         ToolTip="范围 4–60 秒；点击气泡可立即关闭" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="高级">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,16,8,0">
+                    <StackPanel>
+                        <Border Style="{StaticResource SectionCardStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="190" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="Codex 可执行文件" VerticalAlignment="Center" />
+                                <TextBox x:Name="CodexExecutableBox" Grid.Column="1" />
+                                <TextBlock Grid.Row="1" Text="宠物包路径"
+                                           Margin="0,14,0,0" VerticalAlignment="Center" />
+                                <TextBox x:Name="PetPackPathBox" Grid.Row="1" Grid.Column="1"
+                                         Margin="0,14,0,0"
+                                         ToolTip="通常无需手动修改，请优先使用宠物库" />
+                                <TextBlock Grid.Row="2" Text="旧版上下文轮数"
+                                           Margin="0,14,0,0" VerticalAlignment="Center" />
+                                <TextBox x:Name="ContextTurnsBox" Grid.Row="2" Grid.Column="1"
+                                         Margin="0,14,0,0" IsEnabled="False"
+                                         ToolTip="持久 Codex 对话会自行管理上下文" />
+                            </Grid>
+                        </Border>
+                        <TextBlock Text="宠物外观请优先在“宠物库”中选择或编辑；路径字段仅用于兼容和诊断。"
+                                   Margin="2,10,0,0" Foreground="{StaticResource SubtleTextBrush}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <Grid Grid.Row="2">
+            <TextBlock x:Name="ValidationText" Foreground="{StaticResource DangerBrush}"
+                       VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,200,0" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="取消" Width="82" Margin="0,0,8,0" Click="Cancel_Click" />
+                <Button Content="保存设置" Width="108" Click="Save_Click"
+                        Style="{StaticResource PrimaryButtonStyle}" />
             </StackPanel>
         </Grid>
-
-        <TextBlock Grid.Row="5" Text="推理强度" VerticalAlignment="Center" />
-        <ComboBox x:Name="ReasoningEffortBox" Grid.Row="5" Grid.Column="1" Margin="0,5" Padding="5" SelectedValuePath="Tag">
-            <ComboBoxItem Tag="none">不推理（最快）</ComboBoxItem>
-            <ComboBoxItem Tag="low">低（推荐）</ComboBoxItem>
-            <ComboBoxItem Tag="medium">中</ComboBoxItem>
-            <ComboBoxItem Tag="high">高（较慢）</ComboBoxItem>
-        </ComboBox>
-
-        <CheckBox x:Name="FastModeBox" Grid.Row="6" Grid.Column="1" Margin="0,8,0,6"
-                  Content="Fast 模式（响应更快，但消耗更多套餐额度）" />
-        <CheckBox x:Name="OfficialPetsModeBox" Grid.Row="7" Grid.Column="1" Margin="0,8,0,6"
-                  Content="实验：官方 Pets 兼容模式（当前暂停开发）"
-                  Checked="RefreshDependentControls" Unchecked="RefreshDependentControls"
-                  ToolTip="启用后隐藏独立桌宠窗口，使用 Windows+Alt+P 唤起官方 Pets" />
-        <CheckBox x:Name="PetHiddenBox" Grid.Row="8" Grid.Column="1" Margin="0,8,0,6"
-                  Content="启动后隐藏独立桌宠（可用显示/隐藏快捷键唤回）" />
-        <CheckBox x:Name="BindLifetimeToCodexBox" Grid.Row="9" Grid.Column="1" Margin="0,8,0,6"
-                  Content="与 Codex 同启同退（退出后下次提问自动恢复）" />
-        <CheckBox x:Name="FollowCodexActivityBox" Grid.Row="10" Grid.Column="1" Margin="0,8,0,6"
-                  Content="跟随 Codex 全局工作状态（工作中 / 需要输入 / 已就绪）"
-                  ToolTip="只读取插件生命周期 Hook 写入的状态元数据，不读取提示词、回答或聊天记录" />
-        <CheckBox x:Name="FollowPointerWithPetBox" Grid.Row="11" Grid.Column="1" Margin="0,8,0,6"
-                  Content="宠物视线跟随鼠标（仅支持含 16 向视线帧的 v2 宠物包）" />
-        <CheckBox x:Name="ScreenWatchingBox" Grid.Row="12" Grid.Column="1" Margin="0,8,0,6"
-                  Checked="RefreshDependentControls" Unchecked="RefreshDependentControls"
-                  Content="定时看屏幕并吐槽（会截取当前全部显示器）" />
-
-        <TextBlock Grid.Row="13" Text="看屏幕间隔（分钟）" VerticalAlignment="Center" />
-        <TextBox x:Name="ScreenIntervalBox" Grid.Row="13" Grid.Column="1" Margin="0,5" Padding="7" />
-        <CheckBox x:Name="WindowChangeCommentsBox" Grid.Row="14" Grid.Column="1" Margin="0,8,0,6"
-                  Checked="RefreshDependentControls" Unchecked="RefreshDependentControls"
-                  Content="切换到新窗口或页面时吐槽（会截取当前全部显示器）" />
-        <TextBlock Grid.Row="15" Text="新界面吐槽冷却（分钟）" VerticalAlignment="Center" />
-        <TextBox x:Name="WindowChangeCooldownBox" Grid.Row="15" Grid.Column="1" Margin="0,5" Padding="7" />
-        <TextBlock Grid.Row="16" Text="碎碎念停留（秒）" VerticalAlignment="Center" />
-        <TextBox x:Name="CommentBubbleSecondsBox" Grid.Row="16" Grid.Column="1" Margin="0,5" Padding="7"
-                 ToolTip="范围 4–60 秒；点击气泡可立即关闭" />
-        <TextBlock Grid.Row="17" Text="保留上下文轮数" VerticalAlignment="Center" />
-        <TextBox x:Name="ContextTurnsBox" Grid.Row="17" Grid.Column="1" Margin="0,5" Padding="7"
-                 IsEnabled="False" ToolTip="持久 Codex 对话会自行管理上下文；保留此项用于旧设置兼容" />
-        <TextBlock Grid.Row="18" Text="回答最大字符数" VerticalAlignment="Center" />
-        <TextBox x:Name="MaximumAnswerBox" Grid.Row="18" Grid.Column="1" Margin="0,5" Padding="7" />
-        <TextBlock Grid.Row="19" Text="回答超时（秒）" VerticalAlignment="Center" />
-        <TextBox x:Name="TimeoutBox" Grid.Row="19" Grid.Column="1" Margin="0,5" Padding="7" />
-        <TextBlock Grid.Row="20" Text="宠物包路径" VerticalAlignment="Center" />
-        <TextBox x:Name="PetPackPathBox" Grid.Row="20" Grid.Column="1" Margin="0,5" Padding="7"
-                 ToolTip="留空使用内置宠物；推荐从右键菜单的宠物库选择，不必手工填写" />
-        <CheckBox x:Name="StayOnTopBox" Grid.Row="21" Grid.Column="1" Margin="0,12,0,6" Content="桌宠始终置顶" />
-
-        <TextBlock Grid.Row="22" Grid.ColumnSpan="2" Margin="0,18,0,0"
-                   Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap"
-                   Text="OCR 只在按下专用快捷键或菜单命令后截取你框选的区域，回答后立即删除临时图片。自动截图默认关闭并会在回答后删除。" />
-
-        <StackPanel Grid.Row="23" Grid.ColumnSpan="2" Orientation="Horizontal"
-                    HorizontalAlignment="Right" Margin="0,18,0,0">
-            <TextBlock x:Name="ValidationText" Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center" Margin="0,0,14,0" />
-            <Button Content="取消" Width="82" Margin="0,0,8,0" Padding="8,5" Click="Cancel_Click" />
-            <Button Content="保存" Width="82" Padding="8,5" Click="Save_Click" Style="{StaticResource PrimaryButtonStyle}" />
-        </StackPanel>
     </Grid>
-    </ScrollViewer>
 </Window>

@@ -42,6 +42,14 @@ public partial class App : System.Windows.Application
 
         DispatcherUnhandledException += OnDispatcherUnhandledException;
         var mainWindow = new MainWindow();
+        if (string.Equals(Environment.GetEnvironmentVariable("CODEX_DESKTOP_PET_PREVIEW"), "1",
+                StringComparison.Ordinal))
+        {
+            // Local visual QA mode: expose the otherwise taskbar-less transparent window
+            // to Windows accessibility and capture tools without changing normal behavior.
+            mainWindow.ShowInTaskbar = true;
+            mainWindow.ShowActivated = true;
+        }
         MainWindow = mainWindow;
         mainWindow.Show();
         _showWait = ThreadPool.RegisterWaitForSingleObject(

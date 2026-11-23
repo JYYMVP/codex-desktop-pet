@@ -24,24 +24,34 @@
                 <Grid>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Ellipse Width="7" Height="7" Fill="#FF10A37F" Margin="0,0,8,0" />
-                        <TextBlock Text="Codex" FontWeight="SemiBold" FontSize="13"
+                        <TextBlock Text="最近回答" FontWeight="SemiBold" FontSize="13"
                                    Foreground="#FF1F1F1F" />
                         <TextBlock x:Name="HintText" Margin="8,1,0,0"
                                    Foreground="#FF7A7A7A" FontSize="11"
                                    Text="新宠物对话" />
                     </StackPanel>
-                    <Button HorizontalAlignment="Right" Content="×" Click="HideAnswer_Click"
-                            Width="28" Height="28" Padding="0" FontSize="18"
-                            Foreground="#FF555555" Background="Transparent"
-                            BorderBrush="Transparent" />
+                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                        <Button Content="新对话" Click="ClearContext_Click" Padding="7,3"
+                                Margin="0,0,3,0" FontSize="10.5"
+                                Foreground="#FF666666" Background="Transparent"
+                                BorderBrush="Transparent" />
+                        <Button Content="×" Click="HideAnswer_Click"
+                                Width="28" Height="28" Padding="0" FontSize="18"
+                                Foreground="#FF555555" Background="Transparent"
+                                BorderBrush="Transparent" ToolTip="收起回答" />
+                    </StackPanel>
                 </Grid>
                 <ScrollViewer Grid.Row="1" Margin="0,11,0,9" VerticalScrollBarVisibility="Auto">
                     <TextBlock x:Name="AnswerText" FontSize="13.5" LineHeight="21"
                                Foreground="#FF1F1F1F" TextWrapping="Wrap" />
                 </ScrollViewer>
-                <Button Grid.Row="2" Content="复制回答" Click="CopyAnswer_Click"
-                        HorizontalAlignment="Left" Padding="0,4" FontSize="11"
-                        Foreground="#FF6C6C6C" Background="Transparent" BorderBrush="Transparent" />
+                <StackPanel Grid.Row="2" Orientation="Horizontal">
+                    <Button Content="复制" Click="CopyAnswer_Click" Padding="0,4" FontSize="11"
+                            Foreground="#FF6C6C6C" Background="Transparent" BorderBrush="Transparent" />
+                    <Button Content="在 Codex 中继续" Click="OpenConversation_Click"
+                            Margin="12,0,0,0" Padding="0,4" FontSize="11"
+                            Foreground="#FF6C6C6C" Background="Transparent" BorderBrush="Transparent" />
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -77,20 +87,23 @@
               MouseMove="PetBody_MouseMove">
             <Grid.ContextMenu>
                 <ContextMenu x:Name="PetContextMenu">
-                    <MenuItem Header="直接提问" Click="FocusQuestion_Click" />
+                    <MenuItem Header="提问" Click="FocusQuestion_Click" />
                     <MenuItem Header="语音输入（Win+H）" Click="VoiceTyping_Click" />
                     <MenuItem x:Name="PetOcrMenuItem" Header="OCR 框选识别（Ctrl+Alt+R）" Click="OcrRegion_Click" />
+                    <Separator />
+                    <MenuItem Header="查看最近回答" Click="ToggleAnswer_Click" />
+                    <MenuItem Header="在 Codex 中继续对话" Click="OpenConversation_Click" />
+                    <MenuItem Header="新建宠物对话" Click="ClearContext_Click" />
+                    <Separator />
+                    <MenuItem Header="看一眼屏幕" Click="LookAtScreen_Click" />
                     <MenuItem Header="查看 Codex 套餐额度" Click="ShowUsage_Click" />
-                    <MenuItem Header="看一眼屏幕并吐槽" Click="LookAtScreen_Click" />
                     <MenuItem Header="互动动作">
                         <MenuItem Header="挥手" Tag="Waving" Click="PlayPetAction_Click" />
                         <MenuItem Header="跳一下" Tag="Jumping" Click="PlayPetAction_Click" />
                         <MenuItem Header="向左跑" Tag="RunningLeft" Click="PlayPetAction_Click" />
                         <MenuItem Header="向右跑" Tag="RunningRight" Click="PlayPetAction_Click" />
                     </MenuItem>
-                    <MenuItem Header="展开 / 收起回答" Click="ToggleAnswer_Click" />
-                    <MenuItem Header="在 Codex 中打开宠物对话" Click="OpenConversation_Click" />
-                    <MenuItem Header="新建宠物对话" Click="ClearContext_Click" />
+                    <Separator />
                     <MenuItem Header="宠物库…" Click="OpenPetLibrary_Click" />
                     <MenuItem Header="设置…" Click="OpenSettings_Click" />
                     <Separator />
@@ -136,49 +149,63 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBox x:Name="DirectQuestionBox" Margin="2,0,7,0" Padding="9,7"
-                             FontSize="12" VerticalContentAlignment="Center"
-                             Foreground="#FF1F1F1F" Background="Transparent"
-                             BorderBrush="Transparent" CaretBrush="#FF1F1F1F"
-                             ToolTip="直接提问，或在划词回答后继续追问"
-                             KeyDown="DirectQuestion_KeyDown" />
-                    <Button Grid.Column="1" Click="AskDirect_Click" Width="32" Height="32"
+                    <Grid Margin="2,0,7,0">
+                        <TextBox x:Name="DirectQuestionBox" Padding="9,7"
+                                 FontSize="12" VerticalContentAlignment="Center"
+                                 Foreground="#FF1F1F1F" Background="Transparent"
+                                 BorderBrush="Transparent" CaretBrush="#FF1F1F1F"
+                                 ToolTip="直接提问，或在划词回答后继续追问"
+                                 TextChanged="DirectQuestion_TextChanged"
+                                 KeyDown="DirectQuestion_KeyDown" />
+                        <TextBlock x:Name="ComposerPlaceholder" Text="提问或继续追问…"
+                                   Margin="10,0" VerticalAlignment="Center"
+                                   Foreground="#FF999999" FontSize="12"
+                                   IsHitTestVisible="False" />
+                    </Grid>
+                    <Button x:Name="SendButton" Grid.Column="1" Click="AskDirect_Click"
+                            Width="32" Height="32"
                             Padding="0" FontSize="17" ToolTip="发送"
                             Foreground="White" Background="#FF1F1F1F" BorderBrush="#FF1F1F1F">
                         <TextBlock Text="↑" Foreground="White" FontSize="17" />
+                    </Button>
+                    <Button x:Name="CancelButton" Grid.Column="1" Click="CancelRequest_Click"
+                            Width="32" Height="32" Padding="0" Visibility="Collapsed"
+                            ToolTip="停止当前操作" Foreground="#FFB42318"
+                            Background="#FFFFF1F0" BorderBrush="#FFFDA29B">
+                        <TextBlock Text="■" FontSize="10" />
                     </Button>
                 </Grid>
             </Border>
         </Popup>
 
-        <Border x:Name="ActionDock" Width="102" Height="36" Margin="0,0,0,14"
+        <Border x:Name="ActionDock" Width="128" Height="38" Margin="0,0,0,14"
                 HorizontalAlignment="Center" VerticalAlignment="Bottom"
                 Background="#EFF5F8FF" BorderBrush="#A8FFFFFF" BorderThickness="1"
                 CornerRadius="18">
             <Border.Effect>
                 <DropShadowEffect Color="#4A233A60" BlurRadius="14" ShadowDepth="3" Opacity="0.28" />
             </Border.Effect>
-            <Grid Margin="5,3">
+            <Grid Margin="6,3">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="32" />
-                    <ColumnDefinition Width="32" />
+                    <ColumnDefinition Width="38" />
+                    <ColumnDefinition Width="38" />
                     <ColumnDefinition Width="1" />
-                    <ColumnDefinition Width="27" />
+                    <ColumnDefinition Width="35" />
                 </Grid.ColumnDefinitions>
-                <Button Click="FocusQuestion_Click" Padding="0" Background="Transparent"
+                <Button x:Name="DockAskButton" Click="FocusQuestion_Click" Padding="0" Background="Transparent"
                         BorderBrush="Transparent" ToolTip="快速提问">
                     <TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE70F;"
                                FontSize="15" Foreground="#FF344054" />
                 </Button>
-                <Button Grid.Column="1" Click="LookAtScreen_Click" Padding="0"
-                        Background="Transparent" BorderBrush="Transparent" ToolTip="看屏幕并吐槽">
-                    <Grid Width="18" Height="16" VerticalAlignment="Center">
-                        <Border Width="1" Height="6" CornerRadius="0.5" Background="#FF344054" HorizontalAlignment="Left" Margin="2,0,0,0" />
-                        <Border Width="1" Height="11" CornerRadius="0.5" Background="#FF344054" HorizontalAlignment="Left" Margin="6,0,0,0" />
-                        <Border Width="1" Height="15" CornerRadius="0.5" Background="#FF344054" HorizontalAlignment="Center" />
-                        <Border Width="1" Height="10" CornerRadius="0.5" Background="#FF344054" HorizontalAlignment="Right" Margin="0,0,6,0" />
-                        <Border Width="1" Height="5" CornerRadius="0.5" Background="#FF344054" HorizontalAlignment="Right" Margin="0,0,2,0" />
-                    </Grid>
+                <Button x:Name="DockOcrButton" Grid.Column="1" Click="OcrRegion_Click" Padding="0"
+                        Background="Transparent" BorderBrush="Transparent" ToolTip="OCR 框选识别">
+                    <TextBlock Text="OCR" FontSize="9.5" FontWeight="SemiBold"
+                               Foreground="#FF344054" />
+                </Button>
+                <Button x:Name="DockCancelButton" Grid.ColumnSpan="2" Click="CancelRequest_Click"
+                        Padding="0" Visibility="Collapsed" Background="#FFFFF1F0"
+                        BorderBrush="#FFFDA29B" Foreground="#FFB42318" ToolTip="停止当前操作">
+                    <TextBlock Text="停止" FontSize="10.5" FontWeight="SemiBold" />
                 </Button>
                 <Border Grid.Column="2" Width="1" Margin="0,5" Background="#24344054" />
                 <Button x:Name="MoreButton" Grid.Column="3" Click="MoreButton_Click"

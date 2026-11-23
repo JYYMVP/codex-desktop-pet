@@ -24,6 +24,8 @@ public partial class SettingsWindow : Window
         BindLifetimeToCodexBox.IsChecked = settings.BindLifetimeToCodex;
         FollowCodexActivityBox.IsChecked = settings.FollowCodexActivity;
         FollowPointerWithPetBox.IsChecked = settings.FollowPointerWithPet;
+        IdleActivityLevelBox.SelectedValue = settings.IdleActivityLevel.ToString();
+        ReduceMotionBox.IsChecked = settings.ReduceMotion;
         ScreenWatchingBox.IsChecked = settings.ScreenWatchingEnabled;
         ScreenIntervalBox.Text = settings.ScreenWatchingIntervalMinutes.ToString();
         WindowChangeCommentsBox.IsChecked = settings.WindowChangeCommentsEnabled;
@@ -47,7 +49,9 @@ public partial class SettingsWindow : Window
             !int.TryParse(CommentBubbleSecondsBox.Text, out var commentSeconds) || commentSeconds is < 4 or > 60 ||
             string.IsNullOrWhiteSpace(CodexExecutableBox.Text) ||
             string.IsNullOrWhiteSpace(LanguageBox.Text) ||
-            ReasoningEffortBox.SelectedValue is not string reasoning)
+            ReasoningEffortBox.SelectedValue is not string reasoning ||
+            IdleActivityLevelBox.SelectedValue is not string idleActivityValue ||
+            !int.TryParse(idleActivityValue, out var idleActivityLevel) || idleActivityLevel is < 0 or > 2)
         {
             ValidationText.Text = "请检查输入范围。";
             return;
@@ -92,6 +96,8 @@ public partial class SettingsWindow : Window
         _settings.BindLifetimeToCodex = BindLifetimeToCodexBox.IsChecked == true;
         _settings.FollowCodexActivity = FollowCodexActivityBox.IsChecked == true;
         _settings.FollowPointerWithPet = FollowPointerWithPetBox.IsChecked == true;
+        _settings.IdleActivityLevel = idleActivityLevel;
+        _settings.ReduceMotion = ReduceMotionBox.IsChecked == true;
         _settings.ScreenWatchingEnabled = ScreenWatchingBox.IsChecked == true;
         _settings.ScreenWatchingIntervalMinutes = screenInterval;
         _settings.WindowChangeCommentsEnabled = WindowChangeCommentsBox.IsChecked == true;
@@ -113,6 +119,8 @@ public partial class SettingsWindow : Window
         var standalone = OfficialPetsModeBox.IsChecked != true;
         FollowCodexActivityBox.IsEnabled = standalone;
         FollowPointerWithPetBox.IsEnabled = standalone;
+        IdleActivityLevelBox.IsEnabled = standalone;
+        ReduceMotionBox.IsEnabled = standalone;
         ScreenWatchingBox.IsEnabled = standalone;
         WindowChangeCommentsBox.IsEnabled = standalone;
         ScreenIntervalBox.IsEnabled = standalone && ScreenWatchingBox.IsChecked == true;

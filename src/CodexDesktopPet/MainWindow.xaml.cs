@@ -140,7 +140,7 @@ public partial class MainWindow : Window
         if (_busy)
             return;
 
-        _busy = true;
+        SetBusy(true);
         if (!_settings.OfficialPetsCompanionMode && !IsVisible)
             ShowStandalonePet(persistVisibility: true);
         if (!_settings.OfficialPetsCompanionMode)
@@ -177,13 +177,13 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             AppLog.Write($"Request failed: {ex}");
-            NotifyOrShow(FriendlyError(ex), PetState.Error, Forms.ToolTipIcon.Error);
+            ShowRequestFailure(ex);
         }
         finally
         {
             _requestCancellation?.Dispose();
             _requestCancellation = null;
-            _busy = false;
+            SetBusy(false);
             ApplyExternalActivityState();
         }
     }
@@ -459,7 +459,7 @@ public partial class MainWindow : Window
         if (_busy)
             return;
 
-        _busy = true;
+        SetBusy(true);
         string? snapshotPath = null;
         string? regionPath = null;
         var wasVisible = IsVisible;
@@ -500,14 +500,9 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             AppLog.Write($"OCR region request failed: {ex}");
-            if (_settings.OfficialPetsCompanionMode && !IsVisible)
-                ShowTrayNotification(FriendlyError(ex), Forms.ToolTipIcon.Error);
-            else
-            {
-                if (!IsVisible)
-                    ShowStandalonePet(persistVisibility: true);
-                ShowMessage(FriendlyError(ex), PetState.Error);
-            }
+            if (!_settings.OfficialPetsCompanionMode && !IsVisible)
+                ShowStandalonePet(persistVisibility: true);
+            ShowRequestFailure(ex);
         }
         finally
         {
@@ -515,7 +510,7 @@ public partial class MainWindow : Window
             ScreenCaptureService.DeleteCapture(regionPath);
             _requestCancellation?.Dispose();
             _requestCancellation = null;
-            _busy = false;
+            SetBusy(false);
             ApplyExternalActivityState();
             if (wasVisible && !IsVisible && !_settings.OfficialPetsCompanionMode)
                 Show();
@@ -539,7 +534,7 @@ public partial class MainWindow : Window
         if (_busy)
             return;
 
-        _busy = true;
+        SetBusy(true);
         AnswerPanel.Visibility = Visibility.Visible;
         SetAnswerMarkdown("正在查询 Codex 套餐额度…");
         SetPetState(PetState.Thinking);
@@ -555,13 +550,13 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             AppLog.Write($"Codex plan usage query failed: {ex}");
-            ShowMessage(FriendlyError(ex), PetState.Error);
+            ShowRequestFailure(ex);
         }
         finally
         {
             _requestCancellation?.Dispose();
             _requestCancellation = null;
-            _busy = false;
+            SetBusy(false);
             ApplyExternalActivityState();
         }
     }
@@ -576,6 +571,57 @@ public partial class MainWindow : Window
         PetContextMenu.PlacementTarget = MoreButton;
         PetContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
         PetContextMenu.IsOpen = true;
+    }
+
+    private void DirectQuestion_TextChanged(object sender,
+        System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (ComposerPlaceholder is null)
+            return;
+        ComposerPlaceholder.Visibility = string.IsNullOrEmpty(DirectQuestionBox.Text)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private void CancelRequest_Click(object sender, RoutedEventArgs e)
+    {
+        if (_requestCancellation is null)
+            return;
+        CancelButton.IsEnabled = false;
+        DockCancelButton.IsEnabled = false;
+        StatusText.Text = "正在停止…";
+        StatusChip.Visibility = Visibility.Visible;
+        _requestCancellation.Cancel();
+    }
+
+    private void SetBusy(bool busy)
+    {
+        _busy = busy;
+        DirectQuestionBox.IsEnabled = !busy;
+        SendButton.Visibility = busy ? Visibility.Collapsed : Visibility.Visible;
+        CancelButton.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
+        CancelButton.IsEnabled = busy;
+        DockAskButton.Visibility = busy ? Visibility.Collapsed : Visibility.Visible;
+        DockOcrButton.Visibility = busy ? Visibility.Collapsed : Visibility.Visible;
+        DockCancelButton.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
+        DockCancelButton.IsEnabled = busy;
+    }
+
+    private void ShowRequestFailure(Exception exception, bool automatic = false)
+    {
+        if (_requestCancellation?.IsCancellationRequested == true)
+        {
+            if (automatic)
+                SetPetState(PetState.Idle);
+            else
+                NotifyOrShow("已停止当前操作。", PetState.Idle, Forms.ToolTipIcon.Info);
+            return;
+        }
+
+        if (automatic)
+            SetPetState(PetState.Idle);
+        else
+            NotifyOrShow(FriendlyError(exception), PetState.Error, Forms.ToolTipIcon.Error);
     }
 
     private void HidePet_Click(object sender, RoutedEventArgs e) =>
@@ -615,8 +661,8 @@ public partial class MainWindow : Window
         if (_busy || string.IsNullOrWhiteSpace(question))
             return;
 
-        _busy = true;
-        SetComposerOpen(false);
+        SetBusy(true);
+        SetComposerOpen(true);
         AnswerPanel.Visibility = Visibility.Visible;
         DirectQuestionBox.Clear();
         try
@@ -626,13 +672,14 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             AppLog.Write($"Direct question failed: {ex}");
-            ShowMessage(FriendlyError(ex), PetState.Error);
+            ShowRequestFailure(ex);
         }
         finally
         {
             _requestCancellation?.Dispose();
             _requestCancellation = null;
-            _busy = false;
+            SetBusy(false);
+            SetComposerOpen(false);
             ApplyExternalActivityState();
         }
     }
@@ -845,7 +892,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        _busy = true;
+        SetBusy(true);
         string? capturePath = null;
         var wasVisible = IsVisible;
         try
@@ -875,10 +922,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             AppLog.Write($"Screen comment failed: {ex}");
-            if (!automatic)
-                ShowMessage(FriendlyError(ex), PetState.Error);
-            else
-                SetPetState(PetState.Idle);
+            ShowRequestFailure(ex, automatic);
         }
         finally
         {
@@ -887,7 +931,7 @@ public partial class MainWindow : Window
             ScreenCaptureService.DeleteCapture(capturePath);
             _requestCancellation?.Dispose();
             _requestCancellation = null;
-            _busy = false;
+            SetBusy(false);
             ApplyExternalActivityState();
         }
     }
