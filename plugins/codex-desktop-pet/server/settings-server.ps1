@@ -21,6 +21,8 @@ $settingsDirectory = if ([string]::IsNullOrWhiteSpace($TestSettingsDirectory)) {
 $settingsPath = Join-Path $settingsDirectory "settings.json"
 $installedExe = Join-Path $settingsDirectory "app\CodexDesktopPet.exe"
 $hookHealthPath = Join-Path $settingsDirectory "hook-health.json"
+$desktopLogPath = Join-Path $settingsDirectory "desktop-pet.log"
+$pluginVersion = "0.10.5"
 $installLatestScript = Join-Path $PSScriptRoot "..\scripts\install-latest-release.ps1"
 $uiTextPath = Join-Path $PSScriptRoot "settings-ui.zh-CN.json"
 $uiText = if (Test-Path -LiteralPath $uiTextPath -PathType Leaf) {
@@ -255,22 +257,19 @@ function Get-SettingsLayout {
     return @(
         [ordered]@{
             kind = "group"
-            title = (Get-UiText "QuickControlsGroup" "Quick controls")
+            title = (Get-UiText "StatusRecoveryGroup" "Status and recovery")
             items = @(
                 [ordered]@{ kind = "property"; property = "PetEnabled" },
                 [ordered]@{ kind = "property"; property = "PetHidden" },
-                [ordered]@{ kind = "property"; property = "BindLifetimeToCodex" },
-                [ordered]@{ kind = "property"; property = "IdleActivityLevel" },
-                [ordered]@{ kind = "property"; property = "ReduceMotion" },
-                [ordered]@{ kind = "property"; property = "FollowCodexActivity" },
-                [ordered]@{ kind = "property"; property = "FollowPointerWithPet" },
-                [ordered]@{ kind = "property"; property = "ScreenWatchingEnabled" },
-                [ordered]@{ kind = "property"; property = "WindowChangeCommentsEnabled" },
-                [ordered]@{ kind = "property"; property = "StayOnTop" },
                 [ordered]@{
                     kind = "tool"
                     tool = "pet.show"
                     description = (Get-UiText "ShowPetDescription" "Start the installed helper and make the desktop pet visible.")
+                },
+                [ordered]@{
+                    kind = "tool"
+                    tool = "pet.status"
+                    description = (Get-UiText "StatusDescription" "Check the installed version, process path, visibility, and hook health.")
                 },
                 [ordered]@{
                     kind = "tool"
@@ -286,6 +285,18 @@ function Get-SettingsLayout {
         },
         [ordered]@{
             kind = "group"
+            title = (Get-UiText "DailyInteractionGroup" "Daily interaction")
+            items = @(
+                [ordered]@{ kind = "property"; property = "BindLifetimeToCodex" },
+                [ordered]@{ kind = "property"; property = "IdleActivityLevel" },
+                [ordered]@{ kind = "property"; property = "ReduceMotion" },
+                [ordered]@{ kind = "property"; property = "FollowCodexActivity" },
+                [ordered]@{ kind = "property"; property = "FollowPointerWithPet" },
+                [ordered]@{ kind = "property"; property = "StayOnTop" }
+            )
+        },
+        [ordered]@{
+            kind = "group"
             title = (Get-UiText "ShortcutsGroup" "Shortcuts")
             items = @(
                 [ordered]@{ kind = "property"; property = "HotKey" },
@@ -295,8 +306,10 @@ function Get-SettingsLayout {
         },
         [ordered]@{
             kind = "group"
-            title = (Get-UiText "CommentTimingGroup" "Screen comment timing")
+            title = (Get-UiText "AutomaticObservationGroup" "Automatic observation (captures the screen)")
             items = @(
+                [ordered]@{ kind = "property"; property = "ScreenWatchingEnabled" },
+                [ordered]@{ kind = "property"; property = "WindowChangeCommentsEnabled" },
                 [ordered]@{ kind = "property"; property = "ScreenWatchingIntervalMinutes" },
                 [ordered]@{ kind = "property"; property = "WindowChangeCommentCooldownMinutes" },
                 [ordered]@{ kind = "property"; property = "CommentBubbleSeconds" }
@@ -325,6 +338,101 @@ function Get-SettingsReadResult {
         values = $state.Values
         layout = @(Get-SettingsLayout)
     }
+}
+
+function Get-PetStatusReport {
+    $state = Read-SettingsState
+    $installed = Test-Path -LiteralPath $installedExe -PathType Leaf
+    $installedVersion = Get-UiText "StatusNotInstalledValue" "not installed"
+    if ($installed) {
+        try {
+            $version = [Diagnostics.FileVersionInfo]::GetVersionInfo($installedExe).FileVersion
+            $installedVersion = if ([string]::IsNullOrWhiteSpace($version)) {
+                Get-UiText "StatusUnknownValue" "unknown"
+            } else { $version }
+        } catch {
+            $installedVersion = Get-UiText "StatusUnreadableValue" "unreadable"
+        }
+    }
+
+    $matchingProcessCount = 0
+    $unexpectedProcessPaths = [Collections.Generic.List[string]]::new()
+    if ([string]::IsNullOrWhiteSpace($TestSettingsDirectory)) {
+        $processes = @(Get-Process -Name "CodexDesktopPet" -ErrorAction SilentlyContinue)
+        try {
+            $installedFullPath = [IO.Path]::GetFullPath($installedExe)
+            foreach ($process in $processes) {
+                try {
+                    $processPath = [IO.Path]::GetFullPath($process.Path)
+                    if ($processPath -eq $installedFullPath) {
+                        $matchingProcessCount++
+                    } else {
+                        $unexpectedProcessPaths.Add($processPath)
+                    }
+                } catch {
+                    $processPathFormat = Get-UiText "StatusProcessPathUnreadable" "process {0}: path unreadable"
+                    $unexpectedProcessPaths.Add(($processPathFormat -f $process.Id))
+                }
+            }
+        } finally {
+            foreach ($process in $processes) { $process.Dispose() }
+        }
+    }
+
+    $hookSummary = Get-UiText "StatusNoRecordValue" "no record"
+    if (Test-Path -LiteralPath $hookHealthPath -PathType Leaf) {
+        try {
+            $health = Get-Content -Raw -LiteralPath $hookHealthPath | ConvertFrom-Json
+            $hookSummary = "$($health.event) / $($health.state) / $($health.updatedAtUtc)"
+        } catch {
+            $hookSummary = Get-UiText "StatusRecordUnreadableValue" "record unreadable"
+        }
+    }
+
+    $logUpdated = if (Test-Path -LiteralPath $desktopLogPath -PathType Leaf) {
+        (Get-Item -LiteralPath $desktopLogPath).LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
+    } else { Get-UiText "StatusNoLogValue" "no log" }
+
+    $runState = if (-not $installed) {
+        Get-UiText "StatusRunNotInstalled" "not installed"
+    } elseif (-not [bool]$state.Values.PetEnabled) {
+        Get-UiText "StatusRunDisabled" "disabled"
+    } elseif ($matchingProcessCount -gt 0 -and [bool]$state.Values.PetHidden) {
+        Get-UiText "StatusRunHidden" "running, but hidden"
+    } elseif ($matchingProcessCount -gt 0) {
+        Get-UiText "StatusRunVisible" "running and visible"
+    } elseif ($unexpectedProcessPaths.Count -gt 0) {
+        Get-UiText "StatusRunWrongPath" "a desktop pet process is running from another path"
+    } else {
+        Get-UiText "StatusRunStopped" "installed, but not running"
+    }
+
+    $nextStep = if (-not $installed) {
+        Get-UiText "StatusNextInstall" "Use Install or update desktop pet."
+    } elseif (-not [bool]$state.Values.PetEnabled -or $matchingProcessCount -eq 0 -or [bool]$state.Values.PetHidden) {
+        Get-UiText "StatusNextShow" "Use Show pet to enable, start, and reveal it."
+    } else {
+        Get-UiText "StatusNextHealthy" "Status is healthy. If the UI still looks old, use Install or update desktop pet to replace the old build."
+    }
+
+    $unexpected = if ($unexpectedProcessPaths.Count -gt 0) {
+        $otherPathsFormat = Get-UiText "StatusOtherProcessPaths" "`nOther process paths: {0}"
+        $otherPathsFormat -f ($unexpectedProcessPaths -join '; ')
+    } else { "" }
+
+    $reportFormat = Get-UiText "StatusReportFormat" @"
+Plugin version: {0}
+Installed version: {1}
+Run state: {2}
+Install path: {3}
+Enabled / hidden: {4} / {5}
+Latest hook: {6}
+Log updated: {7}{8}
+Next step: {9}
+"@
+    return ($reportFormat -f $pluginVersion, $installedVersion, $runState, $installedExe,
+        $state.Values.PetEnabled, $state.Values.PetHidden, $hookSummary, $logUpdated,
+        $unexpected, $nextStep).Trim()
 }
 
 function Test-HotKey([string]$Value) {
@@ -497,6 +605,13 @@ function Get-ToolDefinitions {
             annotations = [ordered]@{ destructiveHint = $false }
         },
         [ordered]@{
+            name = "pet.status"
+            title = (Get-UiText "StatusTitle" "Check pet status")
+            description = (Get-UiText "StatusDescription" "Check the installed version, process path, visibility, and hook health.")
+            inputSchema = [ordered]@{ type = "object"; additionalProperties = $false }
+            annotations = [ordered]@{ readOnlyHint = $true }
+        },
+        [ordered]@{
             name = "pet.install-latest"
             title = (Get-UiText "InstallLatestTitle" "Install or update desktop pet")
             description = (Get-UiText "InstallLatestDescription" "Download, verify, install, and start the latest GitHub release.")
@@ -589,6 +704,11 @@ function Invoke-Tool([string]$Name, [object]$Arguments) {
                 })
             }
         }
+        "pet.status" {
+            return [ordered]@{
+                content = @([ordered]@{ type = "text"; text = (Get-PetStatusReport) })
+            }
+        }
         "pet.restart" {
             Restart-InstalledPet
             return [ordered]@{
@@ -653,7 +773,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     _meta = [ordered]@{
                         "io.modelcontextprotocol/serverInfo" = [ordered]@{
                             name = "codex-desktop-pet-controls"
-                            version = "0.10.4"
+                            version = $pluginVersion
                         }
                     }
                     capabilities = [ordered]@{
@@ -670,7 +790,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
                     protocolVersion = $protocolVersion
                     serverInfo = [ordered]@{
                         name = "codex-desktop-pet-controls"
-                        version = "0.10.4"
+                        version = $pluginVersion
                     }
                     capabilities = [ordered]@{
                         tools = [ordered]@{ listChanged = $false }

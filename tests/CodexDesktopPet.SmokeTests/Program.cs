@@ -44,7 +44,10 @@ CheckPetInteractionMenu();
 CheckHookLifecycleContract();
 CheckShowPetActionContract();
 CheckPetEnableControlContract();
+CheckPetStatusContract();
+CheckExitSemantics();
 CheckVisualLauncherContract();
+CheckWindowsIconContract();
 CheckComposerLayout();
 CheckAnimatedPetPackage();
 CheckGistShareLinkValidation();
@@ -61,7 +64,7 @@ if (failures.Count > 0)
     return 1;
 }
 
-Console.WriteLine("24 placement, lifecycle, activity, interaction, launcher, plugin-control, editor, package, and share-security smoke tests passed.");
+Console.WriteLine("27 placement, lifecycle, activity, interaction, launcher, plugin-control, icon, editor, package, and share-security smoke tests passed.");
 return 0;
 
 void Check(string name, double expectedLeft, double expectedTop, Point actual)
@@ -181,8 +184,31 @@ void CheckPetEnableControlContract()
         !startup.Contains("PetEnabled", StringComparison.Ordinal) ||
         !startup.Contains("startup skipped", StringComparison.Ordinal) ||
         !mcp.RootElement.GetProperty("mcpServers").TryGetProperty("pet-controls", out _) ||
-        !xaml.Contains("彻底停用桌宠（从插件页重新启用）", StringComparison.Ordinal))
+        !xaml.Contains("停用并退出…", StringComparison.Ordinal))
         failures.Add("the plugin must expose a real enable switch and keep hooks from reviving an explicitly disabled pet");
+}
+
+void CheckPetStatusContract()
+{
+    var server = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "settings-server.ps1"));
+    if (!server.Contains("tool = \"pet.status\"", StringComparison.Ordinal) ||
+        !server.Contains("name = \"pet.status\"", StringComparison.Ordinal) ||
+        !server.Contains("function Get-PetStatusReport", StringComparison.Ordinal) ||
+        !server.Contains("$pluginVersion = \"0.10.5\"", StringComparison.Ordinal) ||
+        !server.Contains("Installed version", StringComparison.Ordinal) ||
+        !server.Contains("unexpectedProcessPaths", StringComparison.Ordinal))
+        failures.Add("plugin details must expose a read-only status check for installed version, path, and process state");
+}
+
+void CheckExitSemantics()
+{
+    var xaml = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "MainWindow.xaml"));
+    var source = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "MainWindow.xaml.cs.txt"));
+    if (!xaml.Contains("Header=\"退出本次运行\" Click=\"ExitMenu_Click\"", StringComparison.Ordinal) ||
+        !xaml.Contains("Header=\"停用并退出…\" Click=\"DisableAndExitMenu_Click\"", StringComparison.Ordinal) ||
+        !source.Contains("MessageBoxResult.No", StringComparison.Ordinal) ||
+        !source.Contains("if (result != MessageBoxResult.Yes)", StringComparison.Ordinal))
+        failures.Add("one-run exit and persistent disable must be separate, with confirmation defaulting to cancel");
 }
 
 void CheckVisualLauncherContract()
@@ -197,6 +223,45 @@ void CheckVisualLauncherContract()
         !installer.Contains("$shortcut.Arguments = \"--show\"", StringComparison.Ordinal) ||
         !setup.Contains("Parameters: \"--show\"", StringComparison.Ordinal))
         failures.Add("all installers must create a visual --show launcher that revives or reveals the single running instance");
+}
+
+void CheckWindowsIconContract()
+{
+    var project = XDocument.Load(Path.Combine(AppContext.BaseDirectory, "AppProject.xml"));
+    var applicationIcon = project.Descendants("ApplicationIcon").SingleOrDefault()?.Value;
+    var setup = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "CodexDesktopPet.iss"));
+    var mainWindowSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "MainWindow.xaml.cs.txt"));
+    var iconPath = Path.Combine(AppContext.BaseDirectory, "CodexDesktopPet.ico");
+
+    if (applicationIcon != @"Assets\CodexDesktopPet.ico" ||
+        !setup.Contains("SetupIconFile=", StringComparison.Ordinal) ||
+        !setup.Contains("UninstallDisplayIcon={app}\\CodexDesktopPet.exe", StringComparison.Ordinal) ||
+        mainWindowSource.Contains("Icon = System.Drawing.SystemIcons.Application", StringComparison.Ordinal) ||
+        !mainWindowSource.Contains("LoadApplicationIcon", StringComparison.Ordinal) ||
+        !File.Exists(iconPath))
+    {
+        failures.Add("Windows EXE, WPF windows, tray, installer, and uninstall entry must share the application icon");
+        return;
+    }
+
+    using var stream = File.OpenRead(iconPath);
+    using var reader = new BinaryReader(stream);
+    if (reader.ReadUInt16() != 0 || reader.ReadUInt16() != 1)
+    {
+        failures.Add("application icon is not a valid ICO container");
+        return;
+    }
+    var count = reader.ReadUInt16();
+    var sizes = new HashSet<int>();
+    for (var index = 0; index < count; index++)
+    {
+        var width = reader.ReadByte();
+        var height = reader.ReadByte();
+        sizes.Add(width == 0 ? 256 : width);
+        reader.BaseStream.Position += 14;
+    }
+    if (!new[] { 16, 32, 48, 256 }.All(sizes.Contains))
+        failures.Add("application icon must include 16, 32, 48, and 256 pixel frames");
 }
 
 void CheckActivitySnapshotOrdering()

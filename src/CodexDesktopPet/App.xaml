@@ -15,6 +15,10 @@
         <SolidColorBrush x:Key="AccentBrush" Color="#FF10A37F" />
         <SolidColorBrush x:Key="DangerBrush" Color="#FFFF6B6B" />
 
+        <Style TargetType="Window">
+            <Setter Property="Icon" Value="/CodexDesktopPet;component/Assets/CodexDesktopPet.ico" />
+        </Style>
+
         <Style TargetType="TextBlock">
             <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI" />
         </Style>

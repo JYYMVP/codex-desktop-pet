@@ -180,11 +180,12 @@ Get-Process CodexDesktopPet | Select-Object Id, Path
 若失败，从系统托盘打开“官方 Pets 诊断…”。报告会显示官方桌面进程、WindowsApps 安装路径、
 最近一次 Quick Chat 操作以及是否在焦点确认阶段停止；它不会读取或发送聊天内容。
 
-关闭窗口只会隐藏到托盘；需要从托盘菜单选择“退出”才能完全结束。
+关闭窗口只会隐藏到托盘。“退出本次运行”会结束当前进程，但下次 Codex 提问仍可自动恢复；
+“停用并退出…”会先要求确认，确认后 Hook 不再自动启动桌宠，直到从开始菜单或插件设置页重新启用。
 
 ## 8. 验证 Codex 启动与活动 hooks
 
-先从托盘退出第 7 步启动的桌宠，确保不存在 `CodexDesktopPet` 进程。然后完全退出并重新打开
+先从托盘选择“退出本次运行”，确保不存在 `CodexDesktopPet` 进程。然后完全退出并重新打开
 Codex，或启动一个新的 CLI 会话。首次遇到插件 hook 审核时，请核对命令只指向本仓库的
 `scripts/start-pet.ps1` 和 `hooks/pet-status.ps1`，然后由你决定是否信任。Codex 不会因为插件
 已安装就自动信任其中的 hooks；插件更新导致定义哈希变化时也需要重新审核。

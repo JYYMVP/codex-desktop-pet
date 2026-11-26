@@ -33,7 +33,11 @@ internal static class ForegroundWindowService
 
         GetWindowThreadProcessId(handle, out var processId);
         string processName;
-        try { processName = Process.GetProcessById((int)processId).ProcessName; }
+        try
+        {
+            using var process = Process.GetProcessById((int)processId);
+            processName = process.ProcessName;
+        }
         catch { processName = "unknown"; }
         return new ForegroundWindowSnapshot(handle, (int)processId, processName, title);
     }

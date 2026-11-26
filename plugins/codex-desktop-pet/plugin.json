@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "codex-desktop-pet",
-  "version": "0.10.4",
+  "version": "0.10.5",
   "description": "Run a Codex-bound desktop companion with automatic lifecycle, native plugin-page controls, selection shortcuts, OCR, persistent chat, screen comments, and detailed activity states.",
   "author": {
     "name": "JYYMVP",
@@ -16,16 +16,18 @@
       "onboardingSkill": "./skills/setup/SKILL.md",
       "interface": {
         "displayName": "Codex Desktop Pet",
-        "shortDescription": "Official-style desktop pet",
+        "shortDescription": "Windows companion for Codex",
         "longDescription": "Configure a Codex-bound native Windows companion directly from the plugin details page. It starts and exits with Codex, asks about selected text, performs OCR, keeps per-pet Codex chats, separates screen comments from answers, and maps privacy-preserving lifecycle events to animations.",
         "developerName": "JYYMVP",
         "category": "Productivity",
         "capabilities": ["Interactive", "Read", "Write"],
+        "logo": "./assets/icon.png",
+        "composerIcon": "./assets/icon.png",
         "websiteURL": "https://github.com/JYYMVP/codex-desktop-pet",
         "defaultPrompt": [
-          "Set up Codex Desktop Pet on this Windows computer",
-          "Diagnose why the desktop pet cannot read my selected text",
-          "Enable selected-text questions in official Pets Quick Chat"
+          "显示并检查 Codex Desktop Pet",
+          "用桌宠解释我选中的文字或 OCR 区域",
+          "诊断桌宠为什么没有跟随 Codex 工作状态"
         ],
         "brandColor": "#10A37F"
       }

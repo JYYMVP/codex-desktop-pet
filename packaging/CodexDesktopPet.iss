@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.10.4"
+  #define AppVersion "0.10.5"
 #endif
 #ifndef PublishDir
   #error PublishDir must point to the dotnet publish directory
@@ -26,9 +26,11 @@ OutputBaseFilename=CodexDesktopPet-Setup-x64
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=..\src\CodexDesktopPet\Assets\CodexDesktopPet.ico
 CloseApplications=yes
 RestartApplications=no
 UninstallDisplayName=Codex Desktop Pet
+UninstallDisplayIcon={app}\CodexDesktopPet.exe
 VersionInfoVersion={#AppVersion}
 VersionInfoCompany=JYYMVP
 VersionInfoDescription=Codex Desktop Pet installer

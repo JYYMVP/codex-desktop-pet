@@ -37,6 +37,8 @@ public partial class MainWindow : Window
     private GlobalHotKeyManager? _ocrHotKey;
     private GlobalHotKeyManager? _togglePetHotKey;
     private Forms.NotifyIcon? _trayIcon;
+    private Forms.ContextMenuStrip? _trayMenu;
+    private System.Drawing.Icon? _trayIconImage;
     private Forms.ToolStripMenuItem? _trayVisibilityItem;
     private Forms.ToolStripMenuItem? _trayActivityItem;
     private CancellationTokenSource? _requestCancellation;
@@ -123,7 +125,7 @@ public partial class MainWindow : Window
         ConfigurePointerLook();
         ConfigureIdleActivity();
 
-        try { RegisterConfiguredHotKey(); }
+        try { NotifyHotKeyFailures(RegisterConfiguredHotKey()); }
         catch (Exception ex)
         {
             AppLog.Write($"Hotkey registration failed: {ex}");
@@ -307,7 +309,8 @@ public partial class MainWindow : Window
 
     private void CreateTrayIcon()
     {
-        var menu = new Forms.ContextMenuStrip();
+        _trayMenu = new Forms.ContextMenuStrip();
+        var menu = _trayMenu;
         if (_settings.OfficialPetsCompanionMode)
             menu.Items.Add("唤起官方 Pets", null, async (_, _) => await ShowFromTrayAsync());
         else
@@ -337,12 +340,14 @@ public partial class MainWindow : Window
             menu.Items.Add("宠物库…", null, (_, _) => OpenPetLibrary());
         }
         menu.Items.Add("设置…", null, (_, _) => OpenSettings());
-        menu.Items.Add("彻底停用（从插件页重新启用）", null, (_, _) => DisableAndExitApplication());
+        menu.Items.Add("退出本次运行", null, (_, _) => ExitApplication());
+        menu.Items.Add("停用并退出…", null, (_, _) => ConfirmDisableAndExitApplication());
 
+        _trayIconImage = LoadApplicationIcon();
         _trayIcon = new Forms.NotifyIcon
         {
             Text = $"Codex 桌宠 — {CurrentHotKey.DisplayName}",
-            Icon = System.Drawing.SystemIcons.Application,
+            Icon = _trayIconImage,
             ContextMenuStrip = menu,
             Visible = true
         };
@@ -353,6 +358,19 @@ public partial class MainWindow : Window
             else
                 TogglePetVisibility();
         };
+    }
+
+    private static System.Drawing.Icon LoadApplicationIcon()
+    {
+        var executablePath = Environment.ProcessPath;
+        if (!string.IsNullOrWhiteSpace(executablePath) && File.Exists(executablePath))
+        {
+            var icon = System.Drawing.Icon.ExtractAssociatedIcon(executablePath);
+            if (icon is not null)
+                return icon;
+        }
+
+        return (System.Drawing.Icon)System.Drawing.SystemIcons.Application.Clone();
     }
 
     private async Task ShowFromTrayAsync()
@@ -434,8 +452,17 @@ public partial class MainWindow : Window
         Close();
     }
 
-    private void DisableAndExitApplication()
+    private void ConfirmDisableAndExitApplication()
     {
+        var result = System.Windows.MessageBox.Show(
+            "停用后，Codex Hook 不会再自动启动桌宠。你仍可从开始菜单或插件设置页重新启用。\n\n确定要停用并退出吗？",
+            "停用 Codex Desktop Pet",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+        if (result != MessageBoxResult.Yes)
+            return;
+
         _settings.PetEnabled = false;
         _settings.Save();
         AppLog.Write("Desktop pet disabled by the user. Plugin Show Pet or Enable Pet can restore it.");
@@ -642,7 +669,10 @@ public partial class MainWindow : Window
             _commentBubbleTimer.Start();
     }
 
-    private void ExitMenu_Click(object sender, RoutedEventArgs e) => DisableAndExitApplication();
+    private void ExitMenu_Click(object sender, RoutedEventArgs e) => ExitApplication();
+
+    private void DisableAndExitMenu_Click(object sender, RoutedEventArgs e) =>
+        ConfirmDisableAndExitApplication();
 
     private async void AskDirect_Click(object sender, RoutedEventArgs e) =>
         await AskDirectAsync();
@@ -774,31 +804,13 @@ public partial class MainWindow : Window
     private void OpenSettings()
     {
         var wasTopmost = Topmost;
-        var previousHotKey = _settings.HotKey;
-        var previousOcrHotKey = _settings.OcrHotKey;
-        var previousTogglePetHotKey = _settings.TogglePetHotKey;
         var previousOfficialPetsMode = _settings.OfficialPetsCompanionMode;
         Topmost = false;
         var dialog = new SettingsWindow(_settings) { Owner = this, Topmost = true };
         if (dialog.ShowDialog() == true)
         {
             Topmost = _settings.StayOnTop;
-            try
-            {
-                RegisterConfiguredHotKey();
-            }
-            catch (Exception ex)
-            {
-                _settings.HotKey = previousHotKey;
-                _settings.OcrHotKey = previousOcrHotKey;
-                _settings.TogglePetHotKey = previousTogglePetHotKey;
-                _settings.Save();
-                try { RegisterConfiguredHotKey(); } catch { }
-                UpdateHotKeyPresentation();
-                AppLog.Write($"New hotkey rejected and previous hotkey restored: {ex}");
-                ShowMessage($"{ex.Message} 已恢复为 {CurrentHotKey.DisplayName}。", PetState.Error);
-                return;
-            }
+            var hotKeyFailures = RegisterConfiguredHotKey();
             UpdateHotKeyPresentation();
             _petController.Reload(_settings.PetPackPath);
             ConfigureScreenWatching();
@@ -822,6 +834,7 @@ public partial class MainWindow : Window
                     ShowStandalonePet(persistVisibility: false);
                 ShowMessage("设置已保存并应用。", PetState.Ready);
             }
+            NotifyHotKeyFailures(hotKeyFailures);
             AppLog.Write("Settings saved and applied.");
         }
         else
@@ -832,10 +845,22 @@ public partial class MainWindow : Window
 
     private void RecreateTrayIcon()
     {
+        DisposeTrayIcon();
+        CreateTrayIcon();
+    }
+
+    private void DisposeTrayIcon()
+    {
+        if (_trayIcon is not null)
+            _trayIcon.Visible = false;
         _trayIcon?.Dispose();
         _trayIcon = null;
+        _trayMenu?.Dispose();
+        _trayMenu = null;
+        _trayIconImage?.Dispose();
+        _trayIconImage = null;
+        _trayVisibilityItem = null;
         _trayActivityItem = null;
-        CreateTrayIcon();
     }
 
     private HotKeyGesture CurrentHotKey =>
@@ -1216,7 +1241,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void RegisterConfiguredHotKey()
+    private IReadOnlyList<string> RegisterConfiguredHotKey()
     {
         var gesture = CurrentHotKey;
         var ocrGesture = CurrentOcrHotKey;
@@ -1228,10 +1253,19 @@ public partial class MainWindow : Window
         _togglePetHotKey?.Dispose();
         _togglePetHotKey = null;
 
-        var hotKey = new GlobalHotKeyManager(this, SelectionHotKeyId,
-            gesture.Modifiers, gesture.Key, gesture.DisplayName);
-        hotKey.Pressed += HotKey_Pressed;
-        _hotKey = hotKey;
+        var failures = new List<string>();
+        try
+        {
+            var hotKey = new GlobalHotKeyManager(this, SelectionHotKeyId,
+                gesture.Modifiers, gesture.Key, gesture.DisplayName);
+            hotKey.Pressed += HotKey_Pressed;
+            _hotKey = hotKey;
+        }
+        catch (Exception ex)
+        {
+            failures.Add($"划词 {gesture.DisplayName}");
+            AppLog.Write($"Selection hotkey unavailable: {ex.Message}");
+        }
 
         try
         {
@@ -1239,23 +1273,39 @@ public partial class MainWindow : Window
                 ocrGesture.Modifiers, ocrGesture.Key, ocrGesture.DisplayName);
             ocrHotKey.Pressed += OcrHotKey_Pressed;
             _ocrHotKey = ocrHotKey;
+        }
+        catch (Exception ex)
+        {
+            failures.Add($"OCR {ocrGesture.DisplayName}");
+            AppLog.Write($"OCR hotkey unavailable: {ex.Message}");
+        }
+
+        try
+        {
             var toggleHotKey = new GlobalHotKeyManager(this, TogglePetHotKeyId,
                 toggleGesture.Modifiers, toggleGesture.Key, toggleGesture.DisplayName);
             toggleHotKey.Pressed += TogglePetHotKey_Pressed;
             _togglePetHotKey = toggleHotKey;
-            AppLog.Write($"Global hotkeys registered. Selection={gesture.DisplayName}; " +
-                         $"OCR={ocrGesture.DisplayName}; TogglePet={toggleGesture.DisplayName}");
         }
-        catch
+        catch (Exception ex)
         {
-            _ocrHotKey?.Dispose();
-            _ocrHotKey = null;
-            _togglePetHotKey?.Dispose();
-            _togglePetHotKey = null;
-            _hotKey?.Dispose();
-            _hotKey = null;
-            throw;
+            failures.Add($"显示/隐藏 {toggleGesture.DisplayName}");
+            AppLog.Write($"Toggle hotkey unavailable: {ex.Message}");
         }
+
+        AppLog.Write($"Global hotkeys registered. Selection={_hotKey is not null}; " +
+                     $"OCR={_ocrHotKey is not null}; TogglePet={_togglePetHotKey is not null}");
+        return failures;
+    }
+
+    private void NotifyHotKeyFailures(IReadOnlyList<string> failures)
+    {
+        if (failures.Count == 0)
+            return;
+
+        ShowTrayNotification(
+            $"部分快捷键被占用：{string.Join("；", failures)}。其他快捷键和右键菜单仍可使用，请在设置中更换冲突组合。",
+            Forms.ToolTipIcon.Warning);
     }
 
     private void UpdateHotKeyPresentation()
@@ -1449,7 +1499,7 @@ public partial class MainWindow : Window
         _hotKey?.Dispose();
         _ocrHotKey?.Dispose();
         _togglePetHotKey?.Dispose();
-        _trayIcon?.Dispose();
+        DisposeTrayIcon();
         _screenWatchTimer.Stop();
         _windowWatchTimer.Stop();
         _commentBubbleTimer.Stop();

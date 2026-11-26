@@ -13,6 +13,15 @@
     <None Include="..\..\src\CodexDesktopPet\MainWindow.xaml"
           Link="MainWindow.xaml"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\CodexDesktopPet\MainWindow.xaml.cs"
+          Link="MainWindow.xaml.cs.txt"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\CodexDesktopPet\CodexDesktopPet.csproj"
+          Link="AppProject.xml"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\CodexDesktopPet\Assets\CodexDesktopPet.ico"
+          Link="CodexDesktopPet.ico"
+          CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\plugins\codex-desktop-pet\hooks\hooks.json"
           Link="hooks.json"
           CopyToOutputDirectory="PreserveNewest" />
