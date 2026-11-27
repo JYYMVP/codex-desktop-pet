@@ -23,9 +23,7 @@ internal sealed class PetLibraryService
 
     public string LibraryRoot { get; }
 
-    public PetLibraryService() : this(Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "CodexDesktopPet", "pets"))
+    public PetLibraryService() : this(Path.Combine(AppPaths.DataRoot, "pets"))
     {
     }
 

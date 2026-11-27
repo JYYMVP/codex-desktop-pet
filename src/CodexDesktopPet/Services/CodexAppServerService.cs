@@ -24,9 +24,7 @@ internal sealed class CodexAppServerService(AppSettings settings) : IDisposable
     private int _nextRequestId;
     private bool _disposed;
 
-    private static string RuntimeDirectory => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "CodexDesktopPet", "runtime");
+    private static string RuntimeDirectory => Path.Combine(AppPaths.DataRoot, "runtime");
 
     public string? GetConversationThreadId(string conversationKey) =>
         settings.PetConversationThreadIds.TryGetValue(conversationKey, out var id)
@@ -242,7 +240,7 @@ internal sealed class CodexAppServerService(AppSettings settings) : IDisposable
             method = "initialize",
             @params = new
             {
-                clientInfo = new { name = "codex-desktop-pet", version = "0.10.5" }
+                clientInfo = new { name = "codex-desktop-pet", version = "0.10.8" }
             }
         }, cancellationToken);
         await WaitForResponseAsync(initializeId, cancellationToken);

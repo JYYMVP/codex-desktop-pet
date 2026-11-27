@@ -180,8 +180,6 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <TextBlock Text="推理强度" VerticalAlignment="Center" />
                                 <ComboBox x:Name="ReasoningEffortBox" Grid.Column="1"
@@ -281,11 +279,6 @@
                                 <TextBox x:Name="PetPackPathBox" Grid.Row="1" Grid.Column="1"
                                          Margin="0,14,0,0"
                                          ToolTip="通常无需手动修改，请优先使用宠物库" />
-                                <TextBlock Grid.Row="2" Text="旧版上下文轮数"
-                                           Margin="0,14,0,0" VerticalAlignment="Center" />
-                                <TextBox x:Name="ContextTurnsBox" Grid.Row="2" Grid.Column="1"
-                                         Margin="0,14,0,0" IsEnabled="False"
-                                         ToolTip="持久 Codex 对话会自行管理上下文" />
                             </Grid>
                         </Border>
                         <TextBlock Text="宠物外观请优先在“宠物库”中选择或编辑；路径字段仅用于兼容和诊断。"

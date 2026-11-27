@@ -8,8 +8,7 @@ internal static class AppLog
     private static readonly object Sync = new();
 
     public static string LogPath { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "CodexDesktopPet", "desktop-pet.log");
+        AppPaths.DataRoot, "desktop-pet.log");
 
     public static void Write(string message)
     {

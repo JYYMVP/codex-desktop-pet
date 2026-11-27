@@ -44,9 +44,7 @@ internal sealed class CodexActivityMonitor : IDisposable
 
     public IReadOnlyList<CodexActivitySnapshot> CurrentSnapshots { get; private set; } = [];
 
-    public static string ActivityDirectory => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "CodexDesktopPet", "activity");
+    public static string ActivityDirectory => Path.Combine(AppPaths.DataRoot, "activity");
 
     public void Start()
     {
@@ -67,14 +65,24 @@ internal sealed class CodexActivityMonitor : IDisposable
         try
         {
             Directory.CreateDirectory(ActivityDirectory);
-            var snapshots = OrderSnapshots(Directory.EnumerateFiles(ActivityDirectory, "*.json")
-                .Select(ReadState)
-                .Where(snapshot => snapshot is not null)
-                .Cast<CodexActivitySnapshot>()
-                .Where(snapshot => DateTime.UtcNow - snapshot.UpdatedAtUtc <= StaleAfter));
+            var snapshots = new List<CodexActivitySnapshot>();
+            foreach (var path in Directory.EnumerateFiles(ActivityDirectory, "*.json"))
+            {
+                var snapshot = ReadState(path);
+                if (snapshot is not null && DateTime.UtcNow - snapshot.UpdatedAtUtc <= StaleAfter)
+                {
+                    snapshots.Add(snapshot);
+                    continue;
+                }
 
-            PublishSnapshots(snapshots);
-            Publish(Aggregate(snapshots.Select(snapshot => snapshot.State)));
+                try { File.Delete(path); }
+                catch { }
+            }
+
+            var orderedSnapshots = OrderSnapshots(snapshots);
+
+            PublishSnapshots(orderedSnapshots);
+            Publish(Aggregate(orderedSnapshots.Select(snapshot => snapshot.State)));
         }
         catch (Exception ex)
         {

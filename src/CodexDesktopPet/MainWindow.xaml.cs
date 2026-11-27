@@ -790,6 +790,13 @@ public partial class MainWindow : Window
 
     private void OpenPetLibrary()
     {
+        var existing = System.Windows.Application.Current.Windows
+            .OfType<PetLibraryWindow>().FirstOrDefault();
+        if (existing is not null)
+        {
+            existing.Activate();
+            return;
+        }
         var previousPath = _settings.PetPackPath;
         var dialog = new PetLibraryWindow(_settings) { Owner = this, Topmost = true };
         dialog.ShowDialog();
@@ -803,6 +810,13 @@ public partial class MainWindow : Window
 
     private void OpenSettings()
     {
+        var existing = System.Windows.Application.Current.Windows
+            .OfType<SettingsWindow>().FirstOrDefault();
+        if (existing is not null)
+        {
+            existing.Activate();
+            return;
+        }
         var wasTopmost = Topmost;
         var previousOfficialPetsMode = _settings.OfficialPetsCompanionMode;
         Topmost = false;
@@ -841,6 +855,18 @@ public partial class MainWindow : Window
         {
             Topmost = wasTopmost;
         }
+    }
+
+    internal void OpenSettingsFromExternalRequest()
+    {
+        AppLog.Write("External settings request received.");
+        OpenSettings();
+    }
+
+    internal void OpenPetLibraryFromExternalRequest()
+    {
+        AppLog.Write("External pet library request received.");
+        OpenPetLibrary();
     }
 
     private void RecreateTrayIcon()

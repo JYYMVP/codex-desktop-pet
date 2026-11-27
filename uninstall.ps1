@@ -1,12 +1,17 @@
 [CmdletBinding(SupportsShouldProcess)]
 param(
-    [string]$InstallDirectory = "$env:LOCALAPPDATA\CodexDesktopPet\app",
+    [string]$InstallDirectory,
     [switch]$RemoveUserData
 )
 
 $ErrorActionPreference = 'Stop'
+$projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+. (Join-Path $projectRoot 'plugins\codex-desktop-pet\scripts\shared-paths.ps1')
+$dataRoot = [IO.Path]::GetFullPath((Get-CodexDesktopPetDataRoot))
+if ([string]::IsNullOrWhiteSpace($InstallDirectory)) {
+    $InstallDirectory = Join-Path $dataRoot 'app'
+}
 $installFullPath = [IO.Path]::GetFullPath($InstallDirectory)
-$dataRoot = [IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA 'CodexDesktopPet'))
 $volumeRoot = [IO.Path]::GetPathRoot($installFullPath)
 if ($installFullPath.TrimEnd('\') -eq $volumeRoot.TrimEnd('\')) {
     throw '拒绝把磁盘根目录作为卸载目标。'
@@ -15,8 +20,15 @@ $installedExe = Join-Path $installFullPath 'CodexDesktopPet.exe'
 if ((Test-Path -LiteralPath $installFullPath) -and -not (Test-Path -LiteralPath $installedExe)) {
     throw "目标目录不包含 CodexDesktopPet.exe，拒绝递归删除：$installFullPath"
 }
-$running = Get-Process CodexDesktopPet -ErrorAction SilentlyContinue
-if ($running) { throw 'Codex 桌宠正在运行。请从托盘菜单退出后再卸载。' }
+$installedExeFullPath = [IO.Path]::GetFullPath($installedExe)
+$running = @(Get-Process CodexDesktopPet -ErrorAction SilentlyContinue | Where-Object {
+    try { [IO.Path]::GetFullPath($_.Path) -eq $installedExeFullPath }
+    catch { $false }
+})
+if ($running.Count -gt 0) {
+    foreach ($process in $running) { $process.Dispose() }
+    throw 'Codex 桌宠正在运行。请从托盘菜单退出后再卸载。'
+}
 
 $shortcutPaths = @(
     (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Codex 桌宠.lnk'),

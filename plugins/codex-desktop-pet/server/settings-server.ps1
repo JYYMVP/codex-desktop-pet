@@ -7,11 +7,10 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 [Console]::InputEncoding = [Text.UTF8Encoding]::new($false)
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+. (Join-Path $PSScriptRoot "..\scripts\shared-paths.ps1")
 
 $settingsDirectory = if ([string]::IsNullOrWhiteSpace($TestSettingsDirectory)) {
-    Join-Path `
-        ([Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)) `
-        "CodexDesktopPet"
+    Get-CodexDesktopPetDataRoot
 } else {
     if ($env:CODEX_DESKTOP_PET_ENABLE_TEST_ROOT -ne "1") {
         throw "TestSettingsDirectory is available only when CODEX_DESKTOP_PET_ENABLE_TEST_ROOT=1."
@@ -22,10 +21,14 @@ $settingsPath = Join-Path $settingsDirectory "settings.json"
 $installedExe = Join-Path $settingsDirectory "app\CodexDesktopPet.exe"
 $hookHealthPath = Join-Path $settingsDirectory "hook-health.json"
 $desktopLogPath = Join-Path $settingsDirectory "desktop-pet.log"
-$pluginVersion = "0.10.5"
+$pluginVersion = "0.10.8"
 $installLatestScript = Join-Path $PSScriptRoot "..\scripts\install-latest-release.ps1"
-$uiTextPath = Join-Path $PSScriptRoot "settings-ui.zh-CN.json"
-$uiText = if (Test-Path -LiteralPath $uiTextPath -PathType Leaf) {
+$uiTextPath = if ([Globalization.CultureInfo]::CurrentUICulture.Name.StartsWith(
+        "zh", [StringComparison]::OrdinalIgnoreCase)) {
+    Join-Path $PSScriptRoot "settings-ui.zh-CN.json"
+} else { $null }
+$uiText = if ($null -ne $uiTextPath -and
+    (Test-Path -LiteralPath $uiTextPath -PathType Leaf)) {
     $utf8 = [Text.UTF8Encoding]::new($false)
     [IO.File]::ReadAllText($uiTextPath, $utf8) | ConvertFrom-Json
 } else {
@@ -87,7 +90,9 @@ function Read-SettingsState {
     $raw = [pscustomobject]@{}
     if (Test-Path -LiteralPath $settingsPath -PathType Leaf) {
         try { $raw = Get-Content -Raw -LiteralPath $settingsPath | ConvertFrom-Json }
-        catch { $raw = [pscustomobject]@{} }
+        catch {
+            throw "The desktop pet settings file is invalid and was not modified: $settingsPath"
+        }
     }
 
     $values = [ordered]@{}
@@ -268,13 +273,23 @@ function Get-SettingsLayout {
                 },
                 [ordered]@{
                     kind = "tool"
+                    tool = "pet.open-settings"
+                    description = (Get-UiText "OpenSettingsDescription" "Open advanced desktop pet settings in a normal Windows dialog.")
+                },
+                [ordered]@{
+                    kind = "tool"
+                    tool = "pet.open-library"
+                    description = (Get-UiText "OpenLibraryDescription" "Open the local pet library in a normal Windows dialog.")
+                },
+                [ordered]@{
+                    kind = "tool"
                     tool = "pet.status"
                     description = (Get-UiText "StatusDescription" "Check the installed version, process path, visibility, and hook health.")
                 },
                 [ordered]@{
                     kind = "tool"
                     tool = "pet.install-latest"
-                    description = (Get-UiText "InstallLatestDescription" "Download, verify, install, and start the latest GitHub release.")
+                    description = (Get-UiText "InstallLatestDescription" "Download, verify, install, and start the GitHub release that matches this plugin version.")
                 },
                 [ordered]@{
                     kind = "tool"
@@ -354,6 +369,16 @@ function Get-PetStatusReport {
             $installedVersion = Get-UiText "StatusUnreadableValue" "unreadable"
         }
     }
+    $installedVersionMatches = $false
+    if ($installed -and -not [string]::IsNullOrWhiteSpace($installedVersion)) {
+        try {
+            $actualVersion = [Version]$installedVersion
+            $expectedVersion = [Version]$pluginVersion
+            $installedVersionMatches = $actualVersion.Major -eq $expectedVersion.Major -and
+                $actualVersion.Minor -eq $expectedVersion.Minor -and
+                $actualVersion.Build -eq $expectedVersion.Build
+        } catch { }
+    }
 
     $matchingProcessCount = 0
     $unexpectedProcessPaths = [Collections.Generic.List[string]]::new()
@@ -395,6 +420,8 @@ function Get-PetStatusReport {
 
     $runState = if (-not $installed) {
         Get-UiText "StatusRunNotInstalled" "not installed"
+    } elseif (-not $installedVersionMatches) {
+        Get-UiText "StatusRunVersionMismatch" "installed helper version does not match the plugin"
     } elseif (-not [bool]$state.Values.PetEnabled) {
         Get-UiText "StatusRunDisabled" "disabled"
     } elseif ($matchingProcessCount -gt 0 -and [bool]$state.Values.PetHidden) {
@@ -409,6 +436,8 @@ function Get-PetStatusReport {
 
     $nextStep = if (-not $installed) {
         Get-UiText "StatusNextInstall" "Use Install or update desktop pet."
+    } elseif (-not $installedVersionMatches) {
+        Get-UiText "StatusNextVersionMismatch" "Use Install or update desktop pet to install the matching helper version."
     } elseif (-not [bool]$state.Values.PetEnabled -or $matchingProcessCount -eq 0 -or [bool]$state.Values.PetHidden) {
         Get-UiText "StatusNextShow" "Use Show pet to enable, start, and reveal it."
     } else {
@@ -605,6 +634,20 @@ function Get-ToolDefinitions {
             annotations = [ordered]@{ destructiveHint = $false }
         },
         [ordered]@{
+            name = "pet.open-settings"
+            title = (Get-UiText "OpenSettingsTitle" "Open advanced settings")
+            description = (Get-UiText "OpenSettingsDescription" "Open advanced desktop pet settings in a normal Windows dialog.")
+            inputSchema = [ordered]@{ type = "object"; additionalProperties = $false }
+            annotations = [ordered]@{ destructiveHint = $false }
+        },
+        [ordered]@{
+            name = "pet.open-library"
+            title = (Get-UiText "OpenLibraryTitle" "Open pet library")
+            description = (Get-UiText "OpenLibraryDescription" "Open the local pet library in a normal Windows dialog.")
+            inputSchema = [ordered]@{ type = "object"; additionalProperties = $false }
+            annotations = [ordered]@{ destructiveHint = $false }
+        },
+        [ordered]@{
             name = "pet.status"
             title = (Get-UiText "StatusTitle" "Check pet status")
             description = (Get-UiText "StatusDescription" "Check the installed version, process path, visibility, and hook health.")
@@ -614,7 +657,7 @@ function Get-ToolDefinitions {
         [ordered]@{
             name = "pet.install-latest"
             title = (Get-UiText "InstallLatestTitle" "Install or update desktop pet")
-            description = (Get-UiText "InstallLatestDescription" "Download, verify, install, and start the latest GitHub release.")
+            description = (Get-UiText "InstallLatestDescription" "Download, verify, install, and start the GitHub release that matches this plugin version.")
             inputSchema = [ordered]@{ type = "object"; additionalProperties = $false }
             annotations = [ordered]@{ destructiveHint = $false; openWorldHint = $true }
         },
@@ -675,6 +718,14 @@ function Show-InstalledPet {
     Restart-InstalledPet
 }
 
+function Open-InstalledPetWindow([string]$Argument) {
+    if (-not [string]::IsNullOrWhiteSpace($TestSettingsDirectory)) { return }
+    if (-not (Test-Path -LiteralPath $installedExe -PathType Leaf)) {
+        throw "CodexDesktopPet.exe is not installed at $installedExe"
+    }
+    Start-Process -FilePath $installedExe -ArgumentList $Argument -WindowStyle Hidden
+}
+
 function Invoke-Tool([string]$Name, [object]$Arguments) {
     switch ($Name) {
         "settings.read" {
@@ -704,6 +755,24 @@ function Invoke-Tool([string]$Name, [object]$Arguments) {
                 })
             }
         }
+        "pet.open-settings" {
+            Open-InstalledPetWindow "--settings"
+            return [ordered]@{
+                content = @([ordered]@{
+                    type = "text"
+                    text = (Get-UiText "OpenSettingsMessage" "Advanced desktop pet settings opened.")
+                })
+            }
+        }
+        "pet.open-library" {
+            Open-InstalledPetWindow "--library"
+            return [ordered]@{
+                content = @([ordered]@{
+                    type = "text"
+                    text = (Get-UiText "OpenLibraryMessage" "Pet library opened.")
+                })
+            }
+        }
         "pet.status" {
             return [ordered]@{
                 content = @([ordered]@{ type = "text"; text = (Get-PetStatusReport) })
@@ -723,7 +792,7 @@ function Invoke-Tool([string]$Name, [object]$Arguments) {
                 throw "The release installer script is missing from the plugin package."
             }
             $output = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass `
-                -File $installLatestScript 2>&1
+                -File $installLatestScript -ExpectedVersion $pluginVersion 2>&1
             if ($LASTEXITCODE -ne 0) {
                 throw (($output | Out-String).Trim())
             }

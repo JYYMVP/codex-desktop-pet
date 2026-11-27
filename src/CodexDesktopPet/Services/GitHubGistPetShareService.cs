@@ -24,8 +24,7 @@ internal sealed partial class GitHubGistPetShareService
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     public GitHubGistPetShareService() : this(Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "CodexDesktopPet", "shares.json"))
+        AppPaths.DataRoot, "shares.json"))
     {
     }
 
@@ -304,7 +303,7 @@ internal sealed partial class GitHubGistPetShareService
     private static string ResolveGhExecutable()
     {
         var wingetLink = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            AppPaths.LocalApplicationData,
             "Microsoft", "WinGet", "Links", "gh.exe");
         return File.Exists(wingetLink) ? wingetLink : "gh.exe";
     }
