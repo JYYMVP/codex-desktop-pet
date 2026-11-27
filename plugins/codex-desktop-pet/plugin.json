@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "codex-desktop-pet",
-  "version": "0.10.5",
+  "version": "0.10.8",
   "description": "Run a Codex-bound desktop companion with automatic lifecycle, native plugin-page controls, selection shortcuts, OCR, persistent chat, screen comments, and detailed activity states.",
   "author": {
     "name": "JYYMVP",

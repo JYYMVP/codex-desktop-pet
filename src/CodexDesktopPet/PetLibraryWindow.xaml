@@ -70,18 +70,18 @@
                         Margin="0,0,8,0" MinWidth="78">
                     <Button.ContextMenu>
                         <ContextMenu>
-                            <MenuItem Header="保存名称与描述" Click="SaveMetadata_Click" />
-                            <MenuItem Header="校验宠物包" Click="Validate_Click" />
+                            <MenuItem x:Name="SaveMetadataMenuItem" Header="保存名称与描述" Click="SaveMetadata_Click" />
+                            <MenuItem x:Name="ValidateMenuItem" Header="校验宠物包" Click="Validate_Click" />
                             <MenuItem Header="导入 ChatGPT 精灵表"
                                       Click="ImportChatGptSpriteSheet_Click"
                                       ToolTip="请只导入你有权使用的素材" />
-                            <MenuItem Header="导出分享包" Click="Export_Click" />
+                            <MenuItem x:Name="ExportMenuItem" Header="导出分享包" Click="Export_Click" />
                             <Separator />
-                            <MenuItem Header="创建公网链接" Click="SharePublic_Click" />
-                            <MenuItem Header="撤销公网链接" Click="UnsharePublic_Click" />
+                            <MenuItem x:Name="SharePublicMenuItem" Header="创建公网链接" Click="SharePublic_Click" />
+                            <MenuItem x:Name="UnsharePublicMenuItem" Header="撤销公网链接" Click="UnsharePublic_Click" />
                             <MenuItem Header="从公网链接领养" Click="AdoptPublic_Click" />
                             <Separator />
-                            <MenuItem Header="删除所选宠物" Click="Delete_Click"
+                            <MenuItem x:Name="DeleteMenuItem" Header="删除所选宠物" Click="Delete_Click"
                                       Foreground="{StaticResource DangerBrush}" />
                         </ContextMenu>
                     </Button.ContextMenu>

@@ -3,11 +3,13 @@ param(
     [string]$Repository = "JYYMVP/codex-desktop-pet",
     [string]$ReleaseDirectory,
     [string]$InstallDirectory,
+    [string]$ExpectedVersion,
     [switch]$DoNotLaunch
 )
 
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
+. (Join-Path $PSScriptRoot "shared-paths.ps1")
 
 $usingTestPaths = -not [string]::IsNullOrWhiteSpace($ReleaseDirectory) -or
                   -not [string]::IsNullOrWhiteSpace($InstallDirectory)
@@ -35,14 +37,20 @@ function Copy-Or-DownloadAssets {
         "User-Agent" = "CodexDesktopPet-Updater"
         "Accept" = "application/vnd.github+json"
     }
-    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repository/releases/latest" `
+    $releaseUri = if ([string]::IsNullOrWhiteSpace($ExpectedVersion)) {
+        "https://api.github.com/repos/$Repository/releases/latest"
+    } else {
+        $tag = [Uri]::EscapeDataString("v$ExpectedVersion")
+        "https://api.github.com/repos/$Repository/releases/tags/$tag"
+    }
+    $release = Invoke-RestMethod -Uri $releaseUri `
         -Headers $headers
     $zipAsset = $release.assets | Where-Object name -eq "CodexDesktopPet-win-x64.zip" |
         Select-Object -First 1
     $checksumAsset = $release.assets |
         Where-Object name -eq "CodexDesktopPet-win-x64.zip.sha256" | Select-Object -First 1
     if ($null -eq $zipAsset -or $null -eq $checksumAsset) {
-        throw "The latest GitHub release does not contain the Windows ZIP and checksum assets."
+        throw "The selected GitHub release does not contain the Windows ZIP and checksum assets."
     }
     foreach ($asset in @($zipAsset, $checksumAsset)) {
         $uri = [Uri]$asset.browser_download_url
@@ -53,7 +61,12 @@ function Copy-Or-DownloadAssets {
     Invoke-WebRequest -Uri $zipAsset.browser_download_url -OutFile $zipPath -Headers $headers
     Invoke-WebRequest -Uri $checksumAsset.browser_download_url -OutFile $checksumPath `
         -Headers $headers
-    return [string]$release.tag_name
+    $releaseName = [string]$release.tag_name
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedVersion) -and
+        $releaseName.TrimStart('v') -ne $ExpectedVersion) {
+        throw "Release $releaseName does not match required version $ExpectedVersion."
+    }
+    return $releaseName
 }
 
 function Expand-ReleaseSafely([string]$Archive, [string]$Destination) {
@@ -82,6 +95,9 @@ function Expand-ReleaseSafely([string]$Archive, [string]$Destination) {
     }
 }
 
+$replacementDirectory = $null
+$backupDirectory = $null
+$installationSwitched = $false
 try {
     $releaseName = Copy-Or-DownloadAssets
     $checksumText = [IO.File]::ReadAllText($checksumPath).Trim()
@@ -98,6 +114,16 @@ try {
     if (-not (Test-Path -LiteralPath $stagedExe -PathType Leaf)) {
         throw "Release archive does not contain CodexDesktopPet.exe."
     }
+    $stagedVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo($stagedExe).FileVersion
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedVersion)) {
+        $expected = [Version]$ExpectedVersion
+        $actual = [Version]$stagedVersion
+        if ($actual.Major -ne $expected.Major -or
+            $actual.Minor -ne $expected.Minor -or
+            $actual.Build -ne $expected.Build) {
+            throw "Release executable version $stagedVersion does not match required version $ExpectedVersion."
+        }
+    }
     if ([string]::IsNullOrWhiteSpace($ReleaseDirectory)) {
         $signature = Get-AuthenticodeSignature -LiteralPath $stagedExe
         if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
@@ -106,10 +132,14 @@ try {
     }
 
     if ([string]::IsNullOrWhiteSpace($InstallDirectory)) {
-        $InstallDirectory = Join-Path $env:LOCALAPPDATA "CodexDesktopPet\app"
+        $InstallDirectory = Join-Path (Get-CodexDesktopPetDataRoot) "app"
     }
     $InstallDirectory = [IO.Path]::GetFullPath($InstallDirectory)
-    [IO.Directory]::CreateDirectory($InstallDirectory) | Out-Null
+    $installParent = [IO.Path]::GetDirectoryName($InstallDirectory)
+    if ([string]::IsNullOrWhiteSpace($installParent)) {
+        throw "The installation directory must have a parent directory."
+    }
+    [IO.Directory]::CreateDirectory($installParent) | Out-Null
     $installedExe = Join-Path $InstallDirectory "CodexDesktopPet.exe"
 
     if (-not $usingTestPaths) {
@@ -122,10 +152,30 @@ try {
         Start-Sleep -Milliseconds 300
     }
 
-    Copy-Item -Path (Join-Path $stagingDirectory "*") -Destination $InstallDirectory `
+    $switchId = [guid]::NewGuid().ToString("N")
+    $replacementDirectory = Join-Path $installParent ".app.new-$switchId"
+    $backupDirectory = Join-Path $installParent ".app.backup-$switchId"
+    [IO.Directory]::CreateDirectory($replacementDirectory) | Out-Null
+    Copy-Item -Path (Join-Path $stagingDirectory "*") -Destination $replacementDirectory `
         -Recurse -Force
-    if (-not (Test-Path -LiteralPath $installedExe -PathType Leaf)) {
-        throw "Desktop pet installation did not produce $installedExe"
+    $replacementExe = Join-Path $replacementDirectory "CodexDesktopPet.exe"
+    if (-not (Test-Path -LiteralPath $replacementExe -PathType Leaf)) {
+        throw "Desktop pet replacement did not produce $replacementExe"
+    }
+
+    if (Test-Path -LiteralPath $InstallDirectory) {
+        Move-Item -LiteralPath $InstallDirectory -Destination $backupDirectory
+    }
+    try {
+        Move-Item -LiteralPath $replacementDirectory -Destination $InstallDirectory
+        $replacementDirectory = $null
+        $installationSwitched = $true
+    } catch {
+        if (Test-Path -LiteralPath $backupDirectory) {
+            Move-Item -LiteralPath $backupDirectory -Destination $InstallDirectory
+            $backupDirectory = $null
+        }
+        throw
     }
     if (-not $usingTestPaths) {
         $programsDirectory = [Environment]::GetFolderPath(
@@ -151,8 +201,24 @@ try {
     if (-not $DoNotLaunch) {
         Start-Process -FilePath $installedExe -ArgumentList "--show" -WindowStyle Hidden
     }
+    if ($null -ne $backupDirectory -and (Test-Path -LiteralPath $backupDirectory)) {
+        Remove-Item -LiteralPath $backupDirectory -Recurse -Force
+        $backupDirectory = $null
+    }
     Write-Output "Installed Codex Desktop Pet $version from $releaseName."
     Write-Output $installedExe
+} catch {
+    if ($installationSwitched -and $null -ne $backupDirectory -and
+        (Test-Path -LiteralPath $backupDirectory)) {
+        try {
+            if (Test-Path -LiteralPath $InstallDirectory) {
+                Remove-Item -LiteralPath $InstallDirectory -Recurse -Force
+            }
+            Move-Item -LiteralPath $backupDirectory -Destination $InstallDirectory
+            $backupDirectory = $null
+        } catch { }
+    }
+    throw
 } finally {
     try {
         $fullTemporaryRoot = [IO.Path]::GetFullPath($temporaryRoot)
@@ -164,4 +230,13 @@ try {
             Remove-Item -LiteralPath $fullTemporaryRoot -Recurse -Force
         }
     } catch { }
+    foreach ($path in @($replacementDirectory)) {
+        if ($null -eq $path -or -not (Test-Path -LiteralPath $path)) { continue }
+        try {
+            $parent = [IO.Path]::GetFullPath([IO.Path]::GetDirectoryName($path))
+            if ($parent -eq [IO.Path]::GetFullPath($installParent)) {
+                Remove-Item -LiteralPath $path -Recurse -Force
+            }
+        } catch { }
+    }
 }

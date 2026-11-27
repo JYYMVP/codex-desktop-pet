@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = "0.10.5",
+    [string]$Version = "0.10.8",
     [string]$OutputDirectory,
     [string]$CertificatePath,
     [string]$CertificatePassword,
@@ -11,6 +11,7 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
+. (Join-Path $repositoryRoot "plugins\codex-desktop-pet\scripts\shared-paths.ps1")
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $OutputDirectory = Join-Path $repositoryRoot "artifacts\release"
 }
@@ -70,7 +71,7 @@ Write-Checksum $zipPath
 
 if (-not $SkipInstaller) {
     $innoCandidates = @(
-        (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe"),
+        (Join-Path (Get-CodexDesktopPetLocalApplicationData) "Programs\Inno Setup 6\ISCC.exe"),
         (Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"),
         (Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe")
     )

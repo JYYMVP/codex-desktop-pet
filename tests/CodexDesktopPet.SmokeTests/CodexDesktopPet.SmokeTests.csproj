@@ -31,6 +31,12 @@
     <None Include="..\..\plugins\codex-desktop-pet\scripts\start-pet.ps1"
           Link="start-pet.ps1"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\plugins\codex-desktop-pet\scripts\shared-paths.ps1"
+          Link="shared-paths.ps1"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\plugins\codex-desktop-pet\scripts\install-latest-release.ps1"
+          Link="install-latest-release.ps1"
+          CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\plugins\codex-desktop-pet\mcp.json"
           Link="mcp.json"
           CopyToOutputDirectory="PreserveNewest" />
@@ -39,6 +45,9 @@
           CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\plugins\codex-desktop-pet\scripts\install-pet.ps1"
           Link="install-pet.ps1"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\install.ps1"
+          Link="root-install.ps1"
           CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\packaging\CodexDesktopPet.iss"
           Link="CodexDesktopPet.iss"

@@ -9,7 +9,6 @@ internal sealed class AppSettings
     public int TimeoutSeconds { get; set; } = 240;
     public int MaximumSelectionCharacters { get; set; } = 12_000;
     public int MaximumAnswerCharacters { get; set; } = 600;
-    public int ContextTurns { get; set; } = 4;
     public string Language { get; set; } = "简体中文";
     public string ReasoningEffort { get; set; } = "none";
     public bool UseFastMode { get; set; }
@@ -34,9 +33,7 @@ internal sealed class AppSettings
     public bool FollowPointerWithPet { get; set; } = true;
     public bool StayOnTop { get; set; } = true;
 
-    public static string SettingsPath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "CodexDesktopPet", "settings.json");
+    public static string SettingsPath => Path.Combine(AppPaths.DataRoot, "settings.json");
 
     public static AppSettings Load()
     {
@@ -96,9 +93,24 @@ internal sealed class AppSettings
             loaded.Save();
             return loaded;
         }
-        catch
+        catch (Exception ex)
         {
-            return new AppSettings();
+            var backupPath = $"{SettingsPath}.corrupt-{DateTime.UtcNow:yyyyMMddHHmmssfff}";
+            try
+            {
+                File.Copy(SettingsPath, backupPath, false);
+                Services.AppLog.Write(
+                    $"Settings were invalid and preserved at {backupPath}: {ex.Message}");
+            }
+            catch (Exception backupException)
+            {
+                Services.AppLog.Write(
+                    $"Settings were invalid and could not be backed up: {backupException.Message}");
+            }
+
+            var defaults = new AppSettings();
+            defaults.Save();
+            return defaults;
         }
     }
 

@@ -43,8 +43,12 @@ CheckActivityDescriptions();
 CheckPetInteractionMenu();
 CheckHookLifecycleContract();
 CheckShowPetActionContract();
+CheckExternalWindowActionsContract();
 CheckPetEnableControlContract();
 CheckPetStatusContract();
+CheckSandboxDataRootContract();
+CheckSettingsCorruptionContract();
+CheckAtomicUpdaterContract();
 CheckExitSemantics();
 CheckVisualLauncherContract();
 CheckWindowsIconContract();
@@ -52,6 +56,7 @@ CheckComposerLayout();
 CheckAnimatedPetPackage();
 CheckGistShareLinkValidation();
 CheckShareArchiveIntegrity();
+CheckCorruptSettingsRecovery();
 
 if (failures.Count > 0)
 {
@@ -64,7 +69,7 @@ if (failures.Count > 0)
     return 1;
 }
 
-Console.WriteLine("27 placement, lifecycle, activity, interaction, launcher, plugin-control, icon, editor, package, and share-security smoke tests passed.");
+Console.WriteLine("Placement, lifecycle, activity, interaction, launcher, plugin-control, icon, editor, package, and share-security smoke tests passed.");
 return 0;
 
 void Check(string name, double expectedLeft, double expectedTop, Point actual)
@@ -171,6 +176,23 @@ void CheckShowPetActionContract()
         failures.Add("plugin details must expose a Show Pet action that clears hidden state and starts the helper");
 }
 
+void CheckExternalWindowActionsContract()
+{
+    var app = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "App.xaml.cs.txt"));
+    var mainWindow = File.ReadAllText(Path.Combine(
+        AppContext.BaseDirectory, "MainWindow.xaml.cs.txt"));
+    var server = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "settings-server.ps1"));
+    if (!app.Contains("SettingsEventName", StringComparison.Ordinal) ||
+        !app.Contains("LibraryEventName", StringComparison.Ordinal) ||
+        !app.Contains("--settings", StringComparison.Ordinal) ||
+        !app.Contains("--library", StringComparison.Ordinal) ||
+        !mainWindow.Contains("OpenSettingsFromExternalRequest", StringComparison.Ordinal) ||
+        !mainWindow.Contains("OpenPetLibraryFromExternalRequest", StringComparison.Ordinal) ||
+        !server.Contains("name = \"pet.open-settings\"", StringComparison.Ordinal) ||
+        !server.Contains("name = \"pet.open-library\"", StringComparison.Ordinal))
+        failures.Add("advanced settings and pet library must be directly reachable outside the transparent pet window");
+}
+
 void CheckPetEnableControlContract()
 {
     var server = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "settings-server.ps1"));
@@ -194,10 +216,100 @@ void CheckPetStatusContract()
     if (!server.Contains("tool = \"pet.status\"", StringComparison.Ordinal) ||
         !server.Contains("name = \"pet.status\"", StringComparison.Ordinal) ||
         !server.Contains("function Get-PetStatusReport", StringComparison.Ordinal) ||
-        !server.Contains("$pluginVersion = \"0.10.5\"", StringComparison.Ordinal) ||
+        !server.Contains("$pluginVersion = \"0.10.8\"", StringComparison.Ordinal) ||
         !server.Contains("Installed version", StringComparison.Ordinal) ||
-        !server.Contains("unexpectedProcessPaths", StringComparison.Ordinal))
+        !server.Contains("unexpectedProcessPaths", StringComparison.Ordinal) ||
+        !server.Contains("installedVersionMatches", StringComparison.Ordinal) ||
+        !server.Contains("StatusNextVersionMismatch", StringComparison.Ordinal))
         failures.Add("plugin details must expose a read-only status check for installed version, path, and process state");
+}
+
+void CheckSandboxDataRootContract()
+{
+    var sandboxPath =
+        @"C:\Users\Example\AppData\Local\Packages\openai.codex_2p2nqsd0c76g0\AC\#!sandbox.{00000000-0000-0000-0000-000000000000}";
+    if (!AppPaths.IsCodexSandboxPath(sandboxPath) ||
+        AppPaths.IsCodexSandboxPath(@"C:\Users\Example\AppData\Local"))
+    {
+        failures.Add("Codex sandbox LocalApplicationData paths must be distinguished from the stable user path");
+    }
+
+    var previousEnabled = Environment.GetEnvironmentVariable(
+        "CODEX_DESKTOP_PET_ENABLE_TEST_ROOT");
+    var previousRoot = Environment.GetEnvironmentVariable("CODEX_DESKTOP_PET_DATA_ROOT");
+    var testRoot = Path.Combine(Path.GetTempPath(), "CodexDesktopPet-path-contract");
+    try
+    {
+        Environment.SetEnvironmentVariable("CODEX_DESKTOP_PET_ENABLE_TEST_ROOT", "1");
+        Environment.SetEnvironmentVariable("CODEX_DESKTOP_PET_DATA_ROOT", testRoot);
+        if (!string.Equals(AppPaths.DataRoot, Path.GetFullPath(testRoot),
+                StringComparison.OrdinalIgnoreCase))
+            failures.Add("desktop helper data root must support an explicitly gated test override");
+    }
+    finally
+    {
+        Environment.SetEnvironmentVariable("CODEX_DESKTOP_PET_ENABLE_TEST_ROOT", previousEnabled);
+        Environment.SetEnvironmentVariable("CODEX_DESKTOP_PET_DATA_ROOT", previousRoot);
+    }
+
+    var sharedPaths = File.ReadAllText(Path.Combine(
+        AppContext.BaseDirectory, "shared-paths.ps1"));
+    if (!sharedPaths.Contains("#!sandbox", StringComparison.Ordinal) ||
+        !sharedPaths.Contains("SpecialFolder]::UserProfile", StringComparison.Ordinal))
+        failures.Add("plugin scripts must resolve Codex sandbox paths to the stable user-local data root");
+}
+
+void CheckSettingsCorruptionContract()
+{
+    var server = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "settings-server.ps1"));
+    if (!server.Contains("settings file is invalid and was not modified", StringComparison.Ordinal) ||
+        server.Contains("catch { $raw = [pscustomobject]@{} }", StringComparison.Ordinal))
+        failures.Add("plugin settings updates must reject corrupt JSON instead of overwriting it with defaults");
+}
+
+void CheckCorruptSettingsRecovery()
+{
+    var temporaryRoot = Path.Combine(
+        Path.GetTempPath(), "CodexDesktopPet.SettingsRecovery", Guid.NewGuid().ToString("N"));
+    var previousEnabled = Environment.GetEnvironmentVariable(
+        "CODEX_DESKTOP_PET_ENABLE_TEST_ROOT");
+    var previousRoot = Environment.GetEnvironmentVariable("CODEX_DESKTOP_PET_DATA_ROOT");
+    try
+    {
+        Directory.CreateDirectory(temporaryRoot);
+        Environment.SetEnvironmentVariable("CODEX_DESKTOP_PET_ENABLE_TEST_ROOT", "1");
+        Environment.SetEnvironmentVariable("CODEX_DESKTOP_PET_DATA_ROOT", temporaryRoot);
+        File.WriteAllText(Path.Combine(temporaryRoot, "settings.json"), "{broken json");
+
+        _ = AppSettings.Load();
+        using var recovered = JsonDocument.Parse(File.ReadAllText(
+            Path.Combine(temporaryRoot, "settings.json")));
+        if (!recovered.RootElement.TryGetProperty("PetEnabled", out _) ||
+            Directory.EnumerateFiles(temporaryRoot, "settings.json.corrupt-*").Count() != 1)
+            failures.Add("invalid desktop settings must be backed up before defaults are restored");
+    }
+    catch (Exception ex)
+    {
+        failures.Add($"settings recovery threw: {ex.Message}");
+    }
+    finally
+    {
+        Environment.SetEnvironmentVariable("CODEX_DESKTOP_PET_ENABLE_TEST_ROOT", previousEnabled);
+        Environment.SetEnvironmentVariable("CODEX_DESKTOP_PET_DATA_ROOT", previousRoot);
+        try { Directory.Delete(temporaryRoot, true); } catch { }
+    }
+}
+
+void CheckAtomicUpdaterContract()
+{
+    var updater = File.ReadAllText(Path.Combine(
+        AppContext.BaseDirectory, "install-latest-release.ps1"));
+    var server = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "settings-server.ps1"));
+    if (!updater.Contains("[string]$ExpectedVersion", StringComparison.Ordinal) ||
+        !updater.Contains(".app.backup-", StringComparison.Ordinal) ||
+        !updater.Contains("Move-Item -LiteralPath $replacementDirectory", StringComparison.Ordinal) ||
+        !server.Contains("-ExpectedVersion $pluginVersion", StringComparison.Ordinal))
+        failures.Add("plugin updates must pin the helper version and atomically switch application directories");
 }
 
 void CheckExitSemantics()
@@ -215,12 +327,15 @@ void CheckVisualLauncherContract()
 {
     var app = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "App.xaml.cs.txt"));
     var installer = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "install-pet.ps1"));
+    var rootInstaller = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "root-install.ps1"));
     var setup = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "CodexDesktopPet.iss"));
     if (!app.Contains("--show", StringComparison.Ordinal) ||
         !app.Contains("ShowEventName", StringComparison.Ordinal) ||
         !app.Contains("ShowFromExternalRequestAsync", StringComparison.Ordinal) ||
         !installer.Contains("CreateShortcut", StringComparison.Ordinal) ||
         !installer.Contains("$shortcut.Arguments = \"--show\"", StringComparison.Ordinal) ||
+        !rootInstaller.Contains("$shortcut.Arguments = '--show'", StringComparison.Ordinal) ||
+        !rootInstaller.Contains(".app.backup-", StringComparison.Ordinal) ||
         !setup.Contains("Parameters: \"--show\"", StringComparison.Ordinal))
         failures.Add("all installers must create a visual --show launcher that revives or reveals the single running instance");
 }

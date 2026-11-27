@@ -1,5 +1,6 @@
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
+. (Join-Path $PSScriptRoot "..\scripts\shared-paths.ps1")
 
 try {
     $inputJson = [Console]::In.ReadToEnd()
@@ -9,9 +10,7 @@ try {
     $sessionId = [string]$eventData.session_id
     if ([string]::IsNullOrWhiteSpace($sessionId)) { exit 0 }
 
-    $activityDirectory = Join-Path `
-        ([Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)) `
-        "CodexDesktopPet\activity"
+    $activityDirectory = Join-Path (Get-CodexDesktopPetDataRoot) "activity"
     [IO.Directory]::CreateDirectory($activityDirectory) | Out-Null
     $healthPath = Join-Path (Split-Path -Parent $activityDirectory) "hook-health.json"
 

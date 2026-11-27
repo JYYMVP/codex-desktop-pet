@@ -48,6 +48,7 @@ public partial class PetLibraryWindow : Window
         NameBox.Text = pet.Name;
         DescriptionBox.Text = pet.Description;
         NameBox.IsEnabled = DescriptionBox.IsEnabled = !pet.IsBuiltIn;
+        RefreshManagementCommands();
     }
 
     private void Import_Click(object sender, RoutedEventArgs e)
@@ -253,10 +254,23 @@ public partial class PetLibraryWindow : Window
     {
         if (LibraryMoreButton.ContextMenu is null)
             return;
+        RefreshManagementCommands();
         LibraryMoreButton.ContextMenu.PlacementTarget = LibraryMoreButton;
         LibraryMoreButton.ContextMenu.Placement =
             System.Windows.Controls.Primitives.PlacementMode.Top;
         LibraryMoreButton.ContextMenu.IsOpen = true;
+    }
+
+    private void RefreshManagementCommands()
+    {
+        var customPet = SelectedPet is { IsBuiltIn: false } pet ? pet : null;
+        var activeShare = customPet is null ? null : _shareService.FindShare(customPet.Id);
+        SaveMetadataMenuItem.IsEnabled = customPet is not null;
+        ValidateMenuItem.IsEnabled = customPet is not null;
+        ExportMenuItem.IsEnabled = customPet is not null;
+        SharePublicMenuItem.IsEnabled = customPet is not null;
+        UnsharePublicMenuItem.IsEnabled = activeShare is not null;
+        DeleteMenuItem.IsEnabled = customPet is not null && activeShare is null;
     }
 
     private void TryAction(Action action)

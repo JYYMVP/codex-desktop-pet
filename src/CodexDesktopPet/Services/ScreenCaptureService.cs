@@ -85,9 +85,7 @@ internal sealed class ScreenCaptureService
 
     private static string CreateCapturePath(string prefix)
     {
-        var captureDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "CodexDesktopPet", "captures");
+        var captureDirectory = Path.Combine(AppPaths.DataRoot, "captures");
         Directory.CreateDirectory(captureDirectory);
         return Path.Combine(captureDirectory, $"{prefix}-{Guid.NewGuid():N}.png");
     }

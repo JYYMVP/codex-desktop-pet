@@ -3,6 +3,34 @@
 一个面向 Windows 的开源桌面划词助手。它常驻桌面；在任意应用中选中文字后按
 `Ctrl + Alt + Q`，桌宠会调用你已经登录的 Codex CLI，并在气泡中给出简短回答。
 
+当前稳定版本为 **0.10.8**。项目由两个部分组成：原生 Windows 桌宠负责窗口、热键和
+屏幕交互；本地 Codex 插件负责安装入口、配置界面和不包含聊天内容的工作状态 Hooks。
+
+## 快速开始
+
+在 Windows 10/11 上安装 .NET 8 SDK，并确保 `codex login status` 显示已登录。然后在仓库
+根目录运行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+脚本会发布程序、安装到 `%LOCALAPPDATA%\CodexDesktopPet\app`、创建桌面和开始菜单快捷方式，
+并启动桌宠。常用入口如下：
+
+| 入口 | 用途 |
+| --- | --- |
+| `CodexDesktopPet.exe --show` | 启用并显示桌宠；已有实例时唤回该实例 |
+| `CodexDesktopPet.exe --settings` | 直接打开高级设置，即使透明桌宠当前隐藏 |
+| `CodexDesktopPet.exe --library` | 直接打开宠物库 |
+| `Ctrl + Alt + Q` | 解释当前选中文字 |
+| `Ctrl + Alt + R` | 框选屏幕区域并进行 OCR |
+| `Ctrl + Alt + H` | 显示或隐藏桌宠 |
+
+插件安装、Hook 信任和完整验收步骤见
+[`docs/plugin-installation.md`](docs/plugin-installation.md)；只想让本地 Codex 代为安装，请看
+[`docs/codex-ui-installation.md`](docs/codex-ui-installation.md)。
+
 ## 当前功能
 
 - 可自定义的 Windows 全局快捷键（默认 `Ctrl + Alt + Q`）
@@ -46,7 +74,8 @@ dotnet run --project .\src\CodexDesktopPet\CodexDesktopPet.csproj
 ```
 
 运行后，在浏览器、编辑器或文档中选中一段文字，再按 `Ctrl + Alt + Q`。
-得到回答后，可以在气泡底部继续输入追问；桌宠只会保留设置中指定的最近几轮。
+得到回答后，可以在气泡底部继续输入追问；每只宠物使用独立、持久的 Codex 对话线程。
+“新建对话”会切换到新线程，但不会删除旧的 Codex 历史。
 关闭窗口会隐藏到系统托盘；“退出本次运行”只结束当前进程，下次 Codex 提问会按设置恢复。
 只有确认“停用并退出”才会关闭自动恢复，之后可从开始菜单或插件设置页重新启用。
 
@@ -100,7 +129,9 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 与 Codex 同启同退、鼠标视线跟随、自动碎碎念、置顶、快捷键和 Fast mode；保存后桌宠会自动重启应用设置。
 “常用开关”中的“检查工作状态连接”会显示最近一次 Hook 事件；若从未收到事件，会明确提示到
 **Settings → Hooks** 审核当前插件 Hook。
-“安装 / 更新桌宠”会从 GitHub Release 下载 Windows ZIP 和 SHA-256 校验文件，验证通过后再安装并启动。
+“安装 / 更新桌宠”会下载与当前插件版本一致的 GitHub Release，校验版本、SHA-256 和签名后原子替换程序目录；失败时保留或恢复旧版本。
+插件页还提供“打开高级设置”和“打开宠物库”，即使透明桌宠窗口隐藏也能直接打开对应的
+普通 Windows 窗口；重复调用只会激活现有窗口，不会启动多个实例。
 如果当前 Codex 版本没有显示这些结构化设置，可直接从 Windows 开始菜单启动 **Codex Desktop Pet**；该入口不依赖插件详情页。
 也可以右键桌宠选择“设置…”，调整回答语言、超时、回答长度、推理强度和宠物包路径等高级项。
 高级设置窗口支持滚动，并会禁用与所选模式冲突的选项。划词助手默认使用 `none` 推理强度，并为其 Codex 子进程关闭
@@ -116,6 +147,16 @@ HTTPS-only 的独立 Codex provider，绕过部分网络环境中约 90 秒的 W
 ```text
 %LOCALAPPDATA%\CodexDesktopPet\desktop-pet.log
 ```
+
+主要本地数据：
+
+| 路径 | 内容 | 普通卸载是否保留 |
+| --- | --- | --- |
+| `%LOCALAPPDATA%\CodexDesktopPet\app` | 可替换的程序文件 | 否 |
+| `%LOCALAPPDATA%\CodexDesktopPet\settings.json` | 用户设置与快捷键 | 是 |
+| `%LOCALAPPDATA%\CodexDesktopPet\pets` | 本地宠物库 | 是 |
+| `%LOCALAPPDATA%\CodexDesktopPet\activity` | 不含聊天内容的临时活动状态 | 是 |
+| `%LOCALAPPDATA%\CodexDesktopPet\desktop-pet.log` | 本地诊断日志 | 是 |
 
 开发回归测试：
 
@@ -134,6 +175,17 @@ dotnet run --project .\tests\CodexDesktopPet.SmokeTests\CodexDesktopPet.SmokeTes
 选区读取仍由 Windows 桌宠进程负责。插件安装教程见
 [`docs/plugin-installation.md`](docs/plugin-installation.md)。
 
+## 仓库结构
+
+```text
+src/CodexDesktopPet/                 Windows WPF 桌宠
+plugins/codex-desktop-pet/           本地 Codex 插件、Hooks 和设置服务
+tests/CodexDesktopPet.SmokeTests/    不依赖 CI 的本地回归测试
+packaging/CodexDesktopPet.iss        Inno Setup 安装包定义
+scripts/build-release.ps1            本地发布、签名、ZIP 和安装包脚本
+docs/                                安装、上下文、宠物格式与方案说明
+```
+
 ## 隐私说明
 
 程序不做视频录制。Codex 活动 Hooks 只写入状态元数据，不写入聊天内容。只有用户主动按下快捷键、点击“提问”“OCR 框选”或“看一眼屏幕”时，相应文字或
@@ -143,12 +195,18 @@ dotnet run --project .\tests\CodexDesktopPet.SmokeTests\CodexDesktopPet.SmokeTes
 只发送框选区域，并在完成、失败或取消后删除源图和区域图。宠物对话由 Codex 线程持久保存；
 “新建对话”只切换到新线程，不删除旧历史。
 
-## 发布与签名
+## 本地发布与签名
 
 `scripts/build-release.ps1` 会生成自包含的 Windows ZIP、Inno Setup 安装包及其 SHA-256 文件。
-`.github/workflows/release.yml` 可手动构建预览产物；推送 `v*` 标签时，工作流要求配置
-`WINDOWS_SIGNING_CERTIFICATE_BASE64` 和 `WINDOWS_SIGNING_CERTIFICATE_PASSWORD`，并在发布前验证
-安装包的 Authenticode 签名。没有真实证书时不会把无签名安装包伪装成可信正式版。
+本项目不依赖 CI，发布包在可信 Windows 机器上本地生成：
+
+```powershell
+.\scripts\build-release.ps1 -Version 0.10.8
+```
+
+生成安装包需要 Inno Setup 6。正式对外发布时通过 `-CertificatePath` 和
+`-CertificatePassword` 提供代码签名证书；没有真实证书的本地构建只能用于开发和验收，
+不应伪装成可信正式版。版本变化摘要见 [`CHANGELOG.md`](CHANGELOG.md)。
 
 ## License
 
